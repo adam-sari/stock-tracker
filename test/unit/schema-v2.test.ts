@@ -27,6 +27,7 @@ describe('schema v2', () => {
     'dod_contracts',
     'fda_calendar',
     'ark_trades',
+    'cabinet_trades',
   ];
 
   it.each(newTables)('table %s exists', (table) => {
@@ -34,9 +35,9 @@ describe('schema v2', () => {
     expect(row).toBeTruthy();
   });
 
-  it('schema_version reports 9', () => {
+  it('schema_version reports 10', () => {
     const v = getDb().prepare(`SELECT MAX(version) AS v FROM schema_version`).get() as { v: number };
-    expect(v.v).toBe(9);
+    expect(v.v).toBe(10);
   });
 
   it('congress_trades.chamber check constraint rejects invalid values', () => {

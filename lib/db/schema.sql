@@ -358,3 +358,23 @@ CREATE INDEX IF NOT EXISTS ix_ark_trades_ticker_ts ON ark_trades (ticker, ts DES
 CREATE INDEX IF NOT EXISTS ix_ark_trades_fund_ts ON ark_trades (fund, ts DESC);
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (9);
+
+-- Plan 10 (Cabinet/Executive Branch trades via Open Cabinet) — 2026-05-14
+
+CREATE TABLE IF NOT EXISTS cabinet_trades (
+  id TEXT PRIMARY KEY,          -- hash(official_name + ticker + transaction_date + kind)
+  ticker TEXT NOT NULL,
+  official_name TEXT NOT NULL,
+  role TEXT NOT NULL,           -- title/agency combined
+  transaction_date TEXT NOT NULL,
+  amount_low REAL,
+  amount_high REAL,
+  kind TEXT NOT NULL,           -- 'Purchase' | 'Sale' | 'Exchange'
+  ptr_url TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'open_cabinet',
+  fetched_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_cabinet_trades_ticker_date ON cabinet_trades (ticker, transaction_date DESC);
+CREATE INDEX IF NOT EXISTS ix_cabinet_trades_official_date ON cabinet_trades (official_name, transaction_date DESC);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (10);

@@ -1,0 +1,83 @@
+{
+  "generatedAt": "2026-04-28T19:13:42.974Z",
+  "officialCount": 2,
+  "transactionCount": 5,
+  "officials": [
+    {
+      "name": "Bedford, Bryan",
+      "title": "FAA Administrator",
+      "agency": "Department of Transportation",
+      "level": "Senate-confirmed",
+      "filingType": "278-T Periodic Transaction Report",
+      "mostRecentFilingDate": "2025-09-15",
+      "confirmedDate": "2025-02-10",
+      "party": "R",
+      "transactions": [
+        {
+          "description": "Medtronic Plc",
+          "ticker": "MDT",
+          "type": "Purchase",
+          "date": "2025-07-11",
+          "amount": "$15,001-$50,000",
+          "lateFilingFlag": false
+        },
+        {
+          "description": "Regeneron Pharmaceuticals, Inc.",
+          "ticker": "REGN",
+          "type": "Purchase",
+          "date": "2025-07-11",
+          "amount": "$1,001-$15,000",
+          "lateFilingFlag": false
+        },
+        {
+          "description": "Amazon Com Inc Com",
+          "ticker": "AMZN",
+          "type": "Sale",
+          "date": "2025-08-07",
+          "amount": "$100,001-$250,000",
+          "lateFilingFlag": false
+        },
+        {
+          "description": "JPMorgan Liquid Assets Money Market Fund",
+          "ticker": "IJLXX",
+          "type": "Sale",
+          "date": "2025-09-10",
+          "amount": "$5,000,001-$25,000,000",
+          "lateFilingFlag": false
+        },
+        {
+          "description": "Fund with no ticker",
+          "ticker": "",
+          "type": "Purchase",
+          "date": "2025-09-12",
+          "amount": "$1,001-$15,000",
+          "lateFilingFlag": false
+        }
+      ],
+      "summary": "FAA Administrator Bryan Bedford.",
+      "sourceFilings": []
+    },
+    {
+      "name": "Bessent, Scott",
+      "title": "Secretary of the Treasury",
+      "agency": "Department of the Treasury",
+      "level": "Cabinet",
+      "filingType": "278-T Periodic Transaction Report",
+      "mostRecentFilingDate": "2026-03-01",
+      "confirmedDate": "2025-01-27",
+      "party": "R",
+      "transactions": [
+        {
+          "description": "Vanguard Total Stock Market ETF",
+          "ticker": "VTI",
+          "type": "Purchase",
+          "date": "2025-03-15",
+          "amount": "$500,001-$1,000,000",
+          "lateFilingFlag": true
+        }
+      ],
+      "summary": "Secretary of the Treasury Scott Bessent.",
+      "sourceFilings": []
+    }
+  ]
+}

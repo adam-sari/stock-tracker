@@ -15,6 +15,7 @@ import { refreshEdgarAlertsOnce } from './refresh-edgar-alerts';
 import { refreshDodContractsOnce } from './refresh-dod-contracts';
 import { refreshFdaCalendarOnce } from './refresh-fda-calendar';
 import { refreshArkTradesOnce } from './refresh-ark-trades';
+import { refreshCabinetTradesOnce } from './refresh-cabinet-trades';
 import { quoteChain, finnhubClient, fmpClient, apewisdomClient, nasdaqHaltsClient } from '../providers';
 import { YahooProvider } from '../providers/yahoo';
 
@@ -81,5 +82,8 @@ export function startSchedulers() {
   // ARK Invest daily trades (Cathie Wood smart-money proxy): daily 02:30 UTC
   cron.schedule('30 2 * * *', safeRun('refresh-ark-trades', () => refreshArkTradesOnce()));
 
-  console.log('[scheduler] started with 16 jobs');
+  // Executive branch trades via Open Cabinet (OGE Form 278-T): daily 05:30 UTC
+  cron.schedule('30 5 * * *', safeRun('refresh-cabinet-trades', () => refreshCabinetTradesOnce()));
+
+  console.log('[scheduler] started with 17 jobs');
 }
