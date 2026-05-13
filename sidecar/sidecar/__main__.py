@@ -16,13 +16,18 @@ def main() -> int:
         if version is None:
             logger.error("Schema not applied. Run `npm run db:init` first.")
             return 1
+        if version.version < 2:
+            logger.error("Schema version %d is too old. Run `npm run db:init` to upgrade.", version.version)
+            return 1
         logger.info("Connected to shared DB. Schema version: %d", version.version)
 
-    scheduler = build_scheduler()
-    if not scheduler.get_jobs():
-        logger.info("No jobs registered yet (Plan 2 will add them). Exiting cleanly.")
-        return 0
+    # Seed curated fund roster
+    from sidecar.seed_funds import seed_funds
+    n = seed_funds()
+    logger.info("Seeded %d curated funds", n)
 
+    scheduler = build_scheduler()
+    logger.info("Scheduler starting with %d jobs", len(scheduler.get_jobs()))
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
