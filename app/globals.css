@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+body {
+  font-feature-settings: "tnum"; /* tabular numerals for money */
+}
