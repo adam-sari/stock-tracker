@@ -266,3 +266,15 @@ CREATE TABLE IF NOT EXISTS cusip_ticker_map (
 );
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (2);
+
+-- Plan 4 (discovery feed) — 2026-05-14
+
+CREATE TABLE IF NOT EXISTS discovery_scores (
+  ticker TEXT PRIMARY KEY,
+  score REAL NOT NULL,
+  signals_json TEXT NOT NULL,
+  computed_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_discovery_scores_score ON discovery_scores (score DESC);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (4);
