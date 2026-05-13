@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Chart } from '@/components/Chart';
+import { PortfolioValueChart, type ValuePoint } from '@/components/PortfolioValueChart';
 import { HoldingsTable } from '@/components/HoldingsTable';
 import { PortfolioSummary } from '@/components/PortfolioSummary';
 import { AddHoldingDrawer } from '@/components/AddHoldingDrawer';
@@ -10,56 +10,45 @@ import { DashboardActivityFeed } from '@/components/DashboardActivityFeed';
 import { UpcomingEarnings } from '@/components/UpcomingEarnings';
 import { WatchlistPanel } from '@/components/WatchlistPanel';
 import type { PortfolioValue } from '@/lib/computations/portfolio';
-import type { Bar } from '@/lib/providers/types';
 
 type Props = { initialValue: PortfolioValue; initialTags: Record<string, string[]> };
 
 const RANGES = [
-  { label: '1D', range: '1d', interval: '1m' as const },
-  { label: '5D', range: '5d', interval: '1m' as const },
-  { label: '1M', range: '1mo', interval: '1d' as const },
-  { label: '3M', range: '3mo', interval: '1d' as const },
-  { label: 'YTD', range: 'ytd', interval: '1d' as const },
-  { label: '1Y', range: '1y', interval: '1d' as const },
-  { label: 'ALL', range: 'max', interval: '1d' as const },
+  { label: '1D', range: '1d' },
+  { label: '5D', range: '5d' },
+  { label: '1M', range: '1m' },
+  { label: '3M', range: '3m' },
+  { label: 'YTD', range: 'ytd' },
+  { label: '1Y', range: '1y' },
+  { label: 'ALL', range: 'all' },
 ];
 
 export function DashboardClient({ initialValue, initialTags }: Props) {
   const [value, setValue] = useState<PortfolioValue>(initialValue);
-  const [bars, setBars] = useState<Bar[]>([]);
+  const [series, setSeries] = useState<ValuePoint[]>([]);
   const [rangeIdx, setRangeIdx] = useState(0);
-  const [primaryTicker, setPrimaryTicker] = useState<string | null>(null);
 
   useEffect(() => {
-    const top = [...value.rows].sort((a, b) => b.market_value - a.market_value)[0];
-    setPrimaryTicker(top?.ticker ?? null);
-  }, [value]);
-
-  useEffect(() => {
-    if (!primaryTicker) { setBars([]); return; }
     const r = RANGES[rangeIdx];
     let cancelled = false;
 
     const load = async () => {
-      const controller = new AbortController();
       try {
-        const res = await fetch(`/api/prices/${primaryTicker}/bars?interval=${r.interval}&range=${r.range}&prepost=true`, {
-          signal: controller.signal,
-        });
+        const res = await fetch(`/api/portfolio/value-series?range=${r.range}`);
+        if (!res.ok) { setSeries([]); return; }
         const data = await res.json();
-        if (!cancelled && Array.isArray(data)) setBars(data);
-      } catch (e) {
-        if (!cancelled && (e as Error).name !== 'AbortError') setBars([]);
+        if (!cancelled && Array.isArray(data)) setSeries(data);
+      } catch {
+        if (!cancelled) setSeries([]);
       }
-      return () => controller.abort();
     };
 
     load();
-    // Poll live: 30s for minute charts, 5min for daily charts
-    const pollMs = r.interval === '1m' ? 30_000 : 5 * 60_000;
+    // Poll: 30s for short ranges (1m candles), 5min for daily
+    const pollMs = (r.range === '1d' || r.range === '5d') ? 30_000 : 5 * 60_000;
     const id = setInterval(load, pollMs);
     return () => { cancelled = true; clearInterval(id); };
-  }, [primaryTicker, rangeIdx]);
+  }, [rangeIdx]);
 
   const refreshValue = useCallback(async () => {
     const r = await fetch('/api/portfolio/value');
@@ -88,9 +77,7 @@ export function DashboardClient({ initialValue, initialTags }: Props) {
 
       <section>
         <div className="flex items-center gap-3 mb-2">
-          <h2 className="text-sm uppercase text-muted">
-            Chart: {primaryTicker ?? '(add a holding first)'}
-          </h2>
+          <h2 className="text-sm uppercase text-muted">Portfolio value</h2>
           <div className="flex gap-1 ml-auto">
             {RANGES.map((r, i) => (
               <button key={r.label} onClick={() => setRangeIdx(i)}
@@ -100,7 +87,7 @@ export function DashboardClient({ initialValue, initialTags }: Props) {
             ))}
           </div>
         </div>
-        <Chart bars={bars} height={360} showSessions={RANGES[rangeIdx].interval === '1m'} />
+        <PortfolioValueChart series={series} height={360} />
       </section>
 
       <section>
