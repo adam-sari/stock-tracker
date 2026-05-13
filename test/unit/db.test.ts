@@ -18,12 +18,12 @@ describe('db connection + migrate', () => {
     rmSync(TEST_DB_DIR, { recursive: true, force: true });
   });
 
-  it('applies the schema and reports version 1', () => {
+  it('applies the schema and reports the latest version', () => {
     process.env.DB_PATH = TEST_DB_PATH;
     const db = getDb();
     applySchema(db);
-    const row = db.prepare('SELECT version FROM schema_version ORDER BY version DESC LIMIT 1').get() as { version: number };
-    expect(row.version).toBe(1);
+    const row = db.prepare('SELECT MAX(version) AS version FROM schema_version').get() as { version: number };
+    expect(row.version).toBe(2);
   });
 
   it('enables WAL mode', () => {

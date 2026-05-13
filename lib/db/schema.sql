@@ -115,3 +115,154 @@ CREATE TABLE IF NOT EXISTS job_runs (
 CREATE INDEX IF NOT EXISTS ix_job_runs_job_started ON job_runs (job, started_at DESC);
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (1);
+
+-- Plan 2 (data ingestion) — 2026-05-13
+
+CREATE TABLE IF NOT EXISTS news (
+  id TEXT PRIMARY KEY,
+  ticker TEXT NOT NULL,
+  headline TEXT NOT NULL,
+  url TEXT NOT NULL,
+  source TEXT NOT NULL,
+  published_at INTEGER NOT NULL,
+  fetched_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_news_ticker_published ON news (ticker, published_at DESC);
+
+CREATE TABLE IF NOT EXISTS insider_txns (
+  id TEXT PRIMARY KEY,
+  ticker TEXT NOT NULL,
+  insider_name TEXT NOT NULL,
+  insider_role TEXT,
+  code TEXT NOT NULL,
+  is_derivative INTEGER NOT NULL DEFAULT 0,
+  shares REAL NOT NULL,
+  price REAL,
+  value REAL,
+  txn_date TEXT NOT NULL,
+  filed_at INTEGER NOT NULL,
+  filing_url TEXT,
+  source TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_insider_txns_ticker_txn ON insider_txns (ticker, txn_date DESC);
+CREATE INDEX IF NOT EXISTS ix_insider_txns_code_txn ON insider_txns (code, txn_date DESC);
+
+CREATE TABLE IF NOT EXISTS insider_sentiment_monthly (
+  ticker TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  month INTEGER NOT NULL,
+  net_change INTEGER NOT NULL,
+  mspr REAL NOT NULL,
+  PRIMARY KEY (ticker, year, month)
+);
+
+CREATE TABLE IF NOT EXISTS funds (
+  cik TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  is_curated INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS fund_holdings (
+  filing_accession TEXT NOT NULL,
+  cik TEXT NOT NULL,
+  ticker TEXT NOT NULL,
+  shares REAL NOT NULL,
+  value_usd REAL NOT NULL,
+  period_end TEXT NOT NULL,
+  filed_at INTEGER NOT NULL,
+  delta_shares REAL,
+  delta_pct REAL,
+  PRIMARY KEY (filing_accession, ticker)
+);
+CREATE INDEX IF NOT EXISTS ix_fund_holdings_ticker_period ON fund_holdings (ticker, period_end DESC);
+CREATE INDEX IF NOT EXISTS ix_fund_holdings_cik_period ON fund_holdings (cik, period_end DESC);
+
+CREATE TABLE IF NOT EXISTS congress_trades (
+  id TEXT PRIMARY KEY,
+  ticker TEXT NOT NULL,
+  chamber TEXT NOT NULL CHECK (chamber IN ('house', 'senate')),
+  member TEXT NOT NULL,
+  district TEXT,
+  party TEXT,
+  kind TEXT NOT NULL,
+  amount_low REAL,
+  amount_high REAL,
+  txn_date TEXT NOT NULL,
+  disclosed_at INTEGER NOT NULL,
+  ptr_url TEXT NOT NULL,
+  source TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_congress_trades_ticker_txn ON congress_trades (ticker, txn_date DESC);
+CREATE INDEX IF NOT EXISTS ix_congress_trades_member_txn ON congress_trades (member, txn_date DESC);
+
+CREATE TABLE IF NOT EXISTS sentiment_snapshots (
+  ticker TEXT NOT NULL,
+  ts INTEGER NOT NULL,
+  source TEXT NOT NULL,
+  rank INTEGER,
+  mentions INTEGER NOT NULL,
+  upvotes INTEGER,
+  mentions_24h_ago INTEGER,
+  PRIMARY KEY (ticker, ts, source)
+);
+CREATE INDEX IF NOT EXISTS ix_sentiment_snapshots_ts ON sentiment_snapshots (ts DESC);
+
+CREATE TABLE IF NOT EXISTS trading_halts (
+  id TEXT PRIMARY KEY,
+  ticker TEXT NOT NULL,
+  halt_date TEXT NOT NULL,
+  halt_time TEXT NOT NULL,
+  reason_code TEXT,
+  market TEXT,
+  resumed_at INTEGER,
+  fetched_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_trading_halts_ticker_date ON trading_halts (ticker, halt_date DESC);
+
+CREATE TABLE IF NOT EXISTS corporate_actions (
+  id TEXT PRIMARY KEY,
+  ticker TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('split', 'dividend', 'spinoff', 'rename')),
+  ex_date TEXT NOT NULL,
+  payment_date TEXT,
+  amount REAL,
+  details_json TEXT,
+  source TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_corporate_actions_ticker_ex ON corporate_actions (ticker, ex_date DESC);
+
+CREATE TABLE IF NOT EXISTS earnings_calendar (
+  ticker TEXT NOT NULL,
+  earnings_date TEXT NOT NULL,
+  hour TEXT,
+  eps_estimate REAL,
+  eps_actual REAL,
+  revenue_estimate REAL,
+  revenue_actual REAL,
+  quarter INTEGER,
+  fiscal_year INTEGER,
+  num_estimates INTEGER,
+  source TEXT NOT NULL,
+  PRIMARY KEY (ticker, earnings_date)
+);
+
+CREATE TABLE IF NOT EXISTS analyst_recommendations (
+  ticker TEXT NOT NULL,
+  period TEXT NOT NULL,
+  strong_buy INTEGER NOT NULL DEFAULT 0,
+  buy INTEGER NOT NULL DEFAULT 0,
+  hold INTEGER NOT NULL DEFAULT 0,
+  sell INTEGER NOT NULL DEFAULT 0,
+  strong_sell INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (ticker, period)
+);
+
+CREATE TABLE IF NOT EXISTS cusip_ticker_map (
+  cusip TEXT PRIMARY KEY,
+  ticker TEXT,
+  name TEXT,
+  resolved_at INTEGER NOT NULL,
+  source TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (2);
