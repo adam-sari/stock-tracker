@@ -8,6 +8,8 @@ import type { FdaCalendarRow } from './fda-calendar';
 import type { DodContract } from './dod-contracts';
 import type { ArkTradeRow } from './ark-trades';
 import type { EdgarAlert } from './edgar-alerts';
+import { latestHiringSnapshot, hiringTrend } from './hiring';
+export type { HiringSnapshot, HiringTrend } from './hiring';
 
 export function listNewsForTicker(ticker: string, limit = 50): NewsRow[] {
   return getDb().prepare(`SELECT * FROM news WHERE ticker = ? ORDER BY published_at DESC LIMIT ?`)
@@ -137,6 +139,16 @@ export function latestEdgarAlertForTicker(ticker: string): EdgarAlert | null {
     .prepare(`SELECT * FROM edgar_alerts WHERE ticker = ? ORDER BY filing_date DESC LIMIT 1`)
     .get(ticker.toUpperCase());
   return (row as EdgarAlert | undefined) ?? null;
+}
+
+/** Latest hiring snapshot for a ticker (pass-through for convenience). */
+export function latestHiringForTicker(ticker: string) {
+  return latestHiringSnapshot(ticker);
+}
+
+/** Hiring trend (latest vs ~7-day-prior open-job count). */
+export function hiringTrendForTicker(ticker: string) {
+  return hiringTrend(ticker);
 }
 
 export type WikiTrend = {

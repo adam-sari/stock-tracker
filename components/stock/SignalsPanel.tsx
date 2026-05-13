@@ -7,6 +7,7 @@ type DodRow = { award_amount: number; action_date: string; recipient_name: strin
 type ArkRow = { fund: string; direction: string; shares: number; ts: string } | null;
 type EdgarRow = { phrase: string; filing_date: string; filing_url: string } | null;
 type WikiTrend = { recent7Avg: number; prior7Avg: number; deltaPct: number } | null;
+type HiringSignal = { latest: number; prior7: number | null; deltaPct: number | null; ats: string } | null;
 
 type Signals = {
   fda: FdaRow;
@@ -14,6 +15,7 @@ type Signals = {
   ark: ArkRow;
   edgar: EdgarRow;
   wiki: WikiTrend;
+  hiring: HiringSignal;
 };
 
 const fmt$ = (n: number) => {
@@ -29,12 +31,12 @@ export function SignalsPanel({ ticker }: { ticker: string }) {
     fetch(`/api/stock/${ticker}/signals`)
       .then(r => r.json())
       .then(d => setSignals(d))
-      .catch(() => setSignals({ fda: null, dod: null, ark: null, edgar: null, wiki: null }));
+      .catch(() => setSignals({ fda: null, dod: null, ark: null, edgar: null, wiki: null, hiring: null }));
   }, [ticker]);
 
   if (!signals) return null;
-  const { fda, dod, ark, edgar, wiki } = signals;
-  if (!fda && !dod && !ark && !edgar && !wiki) return null;
+  const { fda, dod, ark, edgar, wiki, hiring } = signals;
+  if (!fda && !dod && !ark && !edgar && !wiki && !hiring) return null;
 
   return (
     <div className="flex flex-wrap gap-3 text-xs">
@@ -66,6 +68,16 @@ export function SignalsPanel({ ticker }: { ticker: string }) {
       {wiki && (
         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded ${wiki.deltaPct >= 0 ? 'bg-emerald-500/10 text-emerald-300' : 'bg-red-500/10 text-red-300'}`}>
           📖 <span>Wiki {wiki.deltaPct >= 0 ? '▲' : '▼'}{Math.abs(wiki.deltaPct).toFixed(1)}% 7-day views</span>
+        </span>
+      )}
+      {hiring && (
+        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded ${hiring.deltaPct !== null && hiring.deltaPct >= 0 ? 'bg-teal-500/10 text-teal-300' : hiring.deltaPct !== null ? 'bg-rose-500/10 text-rose-300' : 'bg-slate-500/10 text-slate-300'}`}>
+          👔 <span>
+            {hiring.deltaPct !== null
+              ? `Hiring ${hiring.deltaPct >= 0 ? '▲' : '▼'}${Math.abs(hiring.deltaPct).toFixed(0)}% new jobs this week`
+              : `Hiring ${hiring.latest} open jobs`}
+            {' '}· {hiring.ats}
+          </span>
         </span>
       )}
     </div>

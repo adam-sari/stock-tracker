@@ -8,12 +8,15 @@ import { upsertDodContract } from '@/lib/db/queries/dod-contracts';
 import { upsertArkTrades } from '@/lib/db/queries/ark-trades';
 import { upsertEdgarAlert } from '@/lib/db/queries/edgar-alerts';
 import { upsertWikiPageviews } from '@/lib/db/queries/wiki-pageviews';
+import { upsertHiringSnapshot } from '@/lib/db/queries/hiring';
 import {
   latestFdaForTicker,
   latestDodForTicker,
   latestArkForTicker,
   latestEdgarAlertForTicker,
   wikiPageviewsTrend,
+  latestHiringForTicker,
+  hiringTrendForTicker,
 } from '@/lib/db/queries/reads';
 import { GET } from '@/app/api/stock/[ticker]/signals/route';
 
@@ -36,7 +39,24 @@ describe('GET /api/stock/[ticker]/signals', () => {
     });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toMatchObject({ fda: null, dod: null, ark: null, edgar: null, wiki: null });
+    expect(body).toMatchObject({ fda: null, dod: null, ark: null, edgar: null, wiki: null, hiring: null });
+  });
+
+  it('returns hiring signal with deltaPct when 7-day trend available', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const sevenDaysAgo = now - 7 * 86400;
+    upsertHiringSnapshot({ ticker: 'DDOG', ts: now, ats: 'greenhouse', open_jobs: 110 });
+    upsertHiringSnapshot({ ticker: 'DDOG', ts: sevenDaysAgo, ats: 'greenhouse', open_jobs: 100 });
+
+    const res = await GET(new Request('http://localhost/api/stock/DDOG/signals'), {
+      params: Promise.resolve({ ticker: 'DDOG' }),
+    });
+    const body = await res.json();
+    expect(body.hiring).not.toBeNull();
+    expect(body.hiring.latest).toBe(110);
+    expect(body.hiring.prior7).toBe(100);
+    expect(body.hiring.deltaPct).toBeCloseTo(10, 1);
+    expect(body.hiring.ats).toBe('greenhouse');
   });
 
   it('returns latest FDA event for ticker', async () => {
@@ -170,5 +190,13 @@ describe('query helpers in reads.ts', () => {
 
   it('wikiPageviewsTrend returns null for empty table', () => {
     expect(wikiPageviewsTrend('AAPL')).toBeNull();
+  });
+
+  it('latestHiringForTicker returns null for empty table', () => {
+    expect(latestHiringForTicker('DDOG')).toBeNull();
+  });
+
+  it('hiringTrendForTicker returns null for empty table', () => {
+    expect(hiringTrendForTicker('DDOG')).toBeNull();
   });
 });
