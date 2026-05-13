@@ -341,3 +341,20 @@ CREATE INDEX IF NOT EXISTS ix_fda_calendar_ticker_date ON fda_calendar (ticker, 
 CREATE INDEX IF NOT EXISTS ix_fda_calendar_event_date ON fda_calendar (event_date);
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (8);
+
+-- Plan 9 (ARK Invest daily trades) — 2026-05-14
+
+CREATE TABLE IF NOT EXISTS ark_trades (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  fund TEXT NOT NULL,
+  ticker TEXT NOT NULL,
+  direction TEXT NOT NULL CHECK (direction IN ('Buy', 'Sell', '')),
+  shares REAL NOT NULL DEFAULT 0,
+  ts TEXT NOT NULL,
+  fetched_at INTEGER NOT NULL,
+  UNIQUE (fund, ticker, direction, ts)
+);
+CREATE INDEX IF NOT EXISTS ix_ark_trades_ticker_ts ON ark_trades (ticker, ts DESC);
+CREATE INDEX IF NOT EXISTS ix_ark_trades_fund_ts ON ark_trades (fund, ts DESC);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (9);

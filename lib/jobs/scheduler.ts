@@ -14,6 +14,7 @@ import { refreshWikiPageviewsOnce } from './refresh-wiki-pageviews';
 import { refreshEdgarAlertsOnce } from './refresh-edgar-alerts';
 import { refreshDodContractsOnce } from './refresh-dod-contracts';
 import { refreshFdaCalendarOnce } from './refresh-fda-calendar';
+import { refreshArkTradesOnce } from './refresh-ark-trades';
 import { quoteChain, finnhubClient, fmpClient, apewisdomClient, nasdaqHaltsClient } from '../providers';
 import { YahooProvider } from '../providers/yahoo';
 
@@ -77,5 +78,8 @@ export function startSchedulers() {
   // FDA advisory committee calendar (biotech catalysts): weekly Sun 05:00 UTC
   cron.schedule('0 5 * * 0', safeRun('refresh-fda-calendar', () => refreshFdaCalendarOnce(finnhubClient())));
 
-  console.log('[scheduler] started with 15 jobs');
+  // ARK Invest daily trades (Cathie Wood smart-money proxy): daily 02:30 UTC
+  cron.schedule('30 2 * * *', safeRun('refresh-ark-trades', () => refreshArkTradesOnce()));
+
+  console.log('[scheduler] started with 16 jobs');
 }
