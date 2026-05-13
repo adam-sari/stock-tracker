@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:ndaq="http://www.nasdaqtrader.com/">
+  <channel>
+    <title>NASDAQTrader.com</title>
+    <pubDate>Wed, 13 May 2026 13:24:08 GMT</pubDate>
+    <item>
+      <title>ASRT</title>
+      <pubDate>Wed, 13 May 2026 04:00:00 GMT</pubDate>
+      <ndaq:HaltDate>05/13/2026</ndaq:HaltDate>
+      <ndaq:HaltTime>07:55:00.000</ndaq:HaltTime>
+      <ndaq:IssueSymbol>ASRT</ndaq:IssueSymbol>
+      <ndaq:IssueName>Assertio Holdings, Inc.</ndaq:IssueName>
+      <ndaq:Market>NASDAQ</ndaq:Market>
+      <ndaq:ReasonCode>LUDP</ndaq:ReasonCode>
+    </item>
+    <item>
+      <title>FOO</title>
+      <pubDate>Wed, 13 May 2026 09:30:00 GMT</pubDate>
+      <ndaq:HaltDate>05/13/2026</ndaq:HaltDate>
+      <ndaq:HaltTime>09:30:00.000</ndaq:HaltTime>
+      <ndaq:IssueSymbol>FOO</ndaq:IssueSymbol>
+      <ndaq:IssueName>Foo Inc</ndaq:IssueName>
+      <ndaq:Market>NYSE</ndaq:Market>
+      <ndaq:ReasonCode>T1</ndaq:ReasonCode>
+    </item>
+  </channel>
+</rss>
