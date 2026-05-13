@@ -13,3 +13,10 @@ db/*.db-journal
 db/*.db-wal
 db/*.db-shm
 .vitest-cache/
+
+# Python sidecar
+sidecar/.venv/
+sidecar/.pytest_cache/
+**/__pycache__/
+*.pyc
+*.pyo
