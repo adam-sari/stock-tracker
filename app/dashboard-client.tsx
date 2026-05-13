@@ -9,6 +9,7 @@ import { ProviderHealthBadge } from '@/components/ProviderHealthBadge';
 import { DashboardActivityFeed } from '@/components/DashboardActivityFeed';
 import { UpcomingEarnings } from '@/components/UpcomingEarnings';
 import { WatchlistPanel } from '@/components/WatchlistPanel';
+import { RunAllJobsButton } from '@/components/RunAllJobsButton';
 import type { PortfolioValue } from '@/lib/computations/portfolio';
 
 type Props = { initialValue: PortfolioValue; initialTags: Record<string, string[]> };
@@ -101,6 +102,10 @@ export function DashboardClient({ initialValue, initialTags }: Props) {
         <h2 className="text-sm uppercase text-muted mb-2">Activity on your holdings</h2>
         <DashboardActivityFeed />
       </section>
+
+      <footer className="flex items-center justify-end border-t border-border pt-4 mt-2">
+        <RunAllJobsButton />
+      </footer>
     </main>
   );
 }
