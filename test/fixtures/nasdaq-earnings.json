@@ -1,0 +1,10 @@
+{
+  "data": {
+    "asOf": "Wed, May 13, 2026",
+    "headers": {},
+    "rows": [
+      {"lastYearRptDt":"5/14/2025","lastYearEPS":"$0.78","time":"time-after-hours","symbol":"CSCO","name":"Cisco Systems, Inc.","marketCap":"$389,933,441,106","fiscalQuarterEnding":"Apr/2026","epsForecast":"$0.86","noOfEsts":"6"},
+      {"lastYearRptDt":"5/15/2025","lastYearEPS":"$1.57","time":"time-pre-market","symbol":"BABA","name":"Alibaba Group Holding Limited","marketCap":"$317,064,070,407","fiscalQuarterEnding":"Mar/2026","epsForecast":"$1.02","noOfEsts":"3"}
+    ]
+  }
+}
