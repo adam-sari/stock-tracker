@@ -13,6 +13,26 @@ type SentimentSnapshot = {
   mentions_24h_ago: number | null;
 };
 
+function SentimentSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="space-y-1">
+            <div className="animate-pulse bg-panel rounded h-3 w-16" />
+            <div className="animate-pulse bg-panel rounded h-5 w-12" />
+          </div>
+        ))}
+      </div>
+      <div className="space-y-1">
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="animate-pulse bg-panel rounded h-4 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function SentimentTab({ ticker }: { ticker: string }) {
   const [items, setItems] = useState<SentimentSnapshot[] | null>(null);
 
@@ -20,7 +40,7 @@ export function SentimentTab({ ticker }: { ticker: string }) {
     fetch(`/api/stock/${ticker}/sentiment`).then(r => r.json()).then(d => setItems(d.sentiment ?? [])).catch(() => setItems([]));
   }, [ticker]);
 
-  if (items === null) return <div className="text-muted">Loading…</div>;
+  if (items === null) return <SentimentSkeleton />;
   if (items.length === 0) return <div className="text-muted">No retail sentiment snapshots yet. Apewisdom is polled every 30 min and only stores tickers in your holdings + watchlist.</div>;
 
   const latest = items[0];

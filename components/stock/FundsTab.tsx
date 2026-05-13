@@ -15,6 +15,27 @@ type FundHolding = {
   delta_pct: number | null;
 };
 
+function FundsSkeleton() {
+  return (
+    <table className="w-full text-sm">
+      <thead className="text-muted uppercase text-xs">
+        <tr><th className="text-left py-2">Fund</th><th className="text-right">Shares</th><th className="text-right">Value</th><th className="text-right">QoQ Δ</th><th className="text-right">Period</th></tr>
+      </thead>
+      <tbody>
+        {[1, 2, 3, 4].map(i => (
+          <tr key={i} className="border-t border-border">
+            <td className="py-2"><div className="animate-pulse bg-panel rounded h-4 w-40" /></td>
+            <td><div className="animate-pulse bg-panel rounded h-4 w-16 ml-auto" /></td>
+            <td><div className="animate-pulse bg-panel rounded h-4 w-16 ml-auto" /></td>
+            <td><div className="animate-pulse bg-panel rounded h-4 w-14 ml-auto" /></td>
+            <td><div className="animate-pulse bg-panel rounded h-4 w-20 ml-auto" /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 const fmtShares = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n.toLocaleString();
 const fmtUsd = (n: number) => n >= 1e9 ? `$${(n / 1e9).toFixed(2)}B` : n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : `$${n.toLocaleString()}`;
 
@@ -25,7 +46,7 @@ export function FundsTab({ ticker }: { ticker: string }) {
     fetch(`/api/stock/${ticker}/funds`).then(r => r.json()).then(d => setItems(d.funds ?? [])).catch(() => setItems([]));
   }, [ticker]);
 
-  if (items === null) return <div className="text-muted">Loading…</div>;
+  if (items === null) return <FundsSkeleton />;
   if (items.length === 0) return <div className="text-muted">No 13F holdings ingested yet. The weekly scanner populates this.</div>;
 
   return (

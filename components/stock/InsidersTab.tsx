@@ -17,6 +17,27 @@ type InsiderTxn = {
   source: string;
 };
 
+function InsidersSkeleton() {
+  return (
+    <table className="w-full text-sm">
+      <thead className="text-muted uppercase text-xs">
+        <tr><th className="text-left py-2">Insider</th><th className="text-left">Type</th><th className="text-right">Shares</th><th className="text-right">Price</th><th className="text-right">Date</th></tr>
+      </thead>
+      <tbody>
+        {[1, 2, 3, 4].map(i => (
+          <tr key={i} className="border-t border-border">
+            <td className="py-2"><div className="animate-pulse bg-panel rounded h-4 w-32" /></td>
+            <td><div className="animate-pulse bg-panel rounded h-4 w-16" /></td>
+            <td><div className="animate-pulse bg-panel rounded h-4 w-16 ml-auto" /></td>
+            <td><div className="animate-pulse bg-panel rounded h-4 w-14 ml-auto" /></td>
+            <td><div className="animate-pulse bg-panel rounded h-4 w-20 ml-auto" /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 const CODE_LABEL: Record<string, string> = {
   P: 'Purchase', S: 'Sale', A: 'Grant', M: 'Option exercise', F: 'Tax withhold', G: 'Gift', D: 'Disposition',
 };
@@ -28,7 +49,7 @@ export function InsidersTab({ ticker }: { ticker: string }) {
     fetch(`/api/stock/${ticker}/insiders`).then(r => r.json()).then(d => setItems(d.insiders ?? [])).catch(() => setItems([]));
   }, [ticker]);
 
-  if (items === null) return <div className="text-muted">Loading…</div>;
+  if (items === null) return <InsidersSkeleton />;
   if (items.length === 0) return <div className="text-muted">No insider transactions ingested yet for {ticker}.</div>;
 
   return (

@@ -26,6 +26,22 @@ const KIND_COLORS: Record<ActivityEvent['kind'], string> = {
   halt: 'bg-red-500/10 text-red-300',
 };
 
+function ActivitySkeleton() {
+  return (
+    <ul className="space-y-3">
+      {[1, 2, 3, 4].map(i => (
+        <li key={i} className="flex gap-3 items-start">
+          <div className="animate-pulse bg-panel rounded-full w-8 h-8 shrink-0" />
+          <div className="flex-1 space-y-2 py-1">
+            <div className="animate-pulse bg-panel rounded h-4 w-2/3" />
+            <div className="animate-pulse bg-panel rounded h-3 w-1/2" />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function ActivityTab({ ticker }: { ticker: string }) {
   const [events, setEvents] = useState<ActivityEvent[] | null>(null);
 
@@ -36,7 +52,7 @@ export function ActivityTab({ ticker }: { ticker: string }) {
       .catch(() => setEvents([]));
   }, [ticker]);
 
-  if (events === null) return <div className="text-muted">Loading…</div>;
+  if (events === null) return <ActivitySkeleton />;
   if (events.length === 0) return <div className="text-muted">No activity yet. Background jobs ingest data on a cadence — check back later.</div>;
 
   return (

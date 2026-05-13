@@ -17,6 +17,27 @@ type CongressTrade = {
   ptr_url: string;
 };
 
+function CongressSkeleton() {
+  return (
+    <table className="w-full text-sm">
+      <thead className="text-muted uppercase text-xs">
+        <tr><th className="text-left py-2">Member</th><th>Chamber</th><th>Kind</th><th className="text-right">Amount</th><th className="text-right">Date</th></tr>
+      </thead>
+      <tbody>
+        {[1, 2, 3, 4].map(i => (
+          <tr key={i} className="border-t border-border">
+            <td className="py-2"><div className="animate-pulse bg-panel rounded h-4 w-36" /></td>
+            <td><div className="animate-pulse bg-panel rounded h-4 w-14" /></td>
+            <td><div className="animate-pulse bg-panel rounded h-4 w-16" /></td>
+            <td><div className="animate-pulse bg-panel rounded h-4 w-28 ml-auto" /></td>
+            <td><div className="animate-pulse bg-panel rounded h-4 w-20 ml-auto" /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 const KIND_COLOR: Record<string, string> = { Purchase: 'text-up', Sale: 'text-down', Exchange: 'text-muted' };
 
 export function CongressTab({ ticker }: { ticker: string }) {
@@ -26,7 +47,7 @@ export function CongressTab({ ticker }: { ticker: string }) {
     fetch(`/api/stock/${ticker}/congress`).then(r => r.json()).then(d => setItems(d.congress ?? [])).catch(() => setItems([]));
   }, [ticker]);
 
-  if (items === null) return <div className="text-muted">Loading…</div>;
+  if (items === null) return <CongressSkeleton />;
   if (items.length === 0) return <div className="text-muted">No Congressional trades on file for {ticker}.</div>;
 
   return (
