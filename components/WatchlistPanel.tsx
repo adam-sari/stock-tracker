@@ -60,7 +60,8 @@ export function WatchlistPanel() {
   return (
     <section>
       <h2 className="text-sm uppercase text-muted mb-2">Watchlist</h2>
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm min-w-[400px]">
         <thead className="text-muted uppercase text-xs">
           <tr><th className="text-left py-2">Ticker</th><th className="text-right">Price</th><th className="text-left">Source</th><th></th></tr>
         </thead>
@@ -80,6 +81,7 @@ export function WatchlistPanel() {
           ))}
         </tbody>
       </table>
+      </div>
     </section>
   );
 }

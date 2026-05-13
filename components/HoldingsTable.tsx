@@ -15,7 +15,8 @@ export function HoldingsTable({ rows, tagsByTicker = {} }: Props) {
     );
   }
   return (
-    <table className="w-full text-sm">
+    <div className="overflow-x-auto">
+    <table className="w-full text-sm min-w-[640px]">
       <thead className="text-muted uppercase text-xs">
         <tr>
           <th className="text-left py-2">Ticker</th>
@@ -52,5 +53,6 @@ export function HoldingsTable({ rows, tagsByTicker = {} }: Props) {
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
