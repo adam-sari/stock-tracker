@@ -9,6 +9,7 @@ import { refreshEarningsOnce } from './refresh-earnings';
 import { refreshRecommendationsOnce } from './refresh-recommendations';
 import { refreshInsiderSentimentOnce } from './refresh-insider-sentiment';
 import { refreshCorporateActionsOnce } from './refresh-corporate-actions';
+import { computeDiscoveryOnce } from './compute-discovery';
 import { quoteChain, finnhubClient, fmpClient, apewisdomClient, nasdaqHaltsClient } from '../providers';
 
 let started = false;
@@ -54,5 +55,8 @@ export function startSchedulers() {
   // Corporate actions: daily 03:00 UTC
   cron.schedule('0 3 * * *', safeRun('refresh-corporate-actions', () => refreshCorporateActionsOnce(fmpClient())));
 
-  console.log('[scheduler] started with 10 jobs');
+  // Discovery score recomputation: daily 06:00 UTC
+  cron.schedule('0 6 * * *', safeRun('compute-discovery', () => computeDiscoveryOnce()));
+
+  console.log('[scheduler] started with 11 jobs');
 }
