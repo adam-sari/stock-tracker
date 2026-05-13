@@ -1,11 +1,18 @@
-import Link from 'next/link';
+import { applySchema } from '@/lib/db/migrate';
+import { listDiscoveryTopN } from '@/lib/db/queries/discovery';
+import { DiscoveryClient } from '@/components/discover/DiscoveryClient';
 
-export default function Discover() {
-  return (
-    <main className="p-6 max-w-4xl mx-auto">
-      <Link href="/" className="text-accent hover:underline">← Back to dashboard</Link>
-      <h1 className="text-2xl font-semibold mt-4">Discover</h1>
-      <p className="text-muted mt-2">Discovery feed is built in Plan 4.</p>
-    </main>
-  );
+applySchema();
+
+export const dynamic = 'force-dynamic';
+
+export default async function DiscoverPage() {
+  const rows = listDiscoveryTopN(50);
+  const items = rows.map(r => ({
+    ticker: r.ticker,
+    score: r.score,
+    signals: JSON.parse(r.signals_json),
+    computed_at: r.computed_at,
+  }));
+  return <DiscoveryClient initial={items} />;
 }
