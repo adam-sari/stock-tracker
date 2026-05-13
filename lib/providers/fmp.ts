@@ -124,7 +124,16 @@ export class FmpClient {
   }
 
   async getEarningsCalendar(): Promise<FmpEarning[]> {
-    return this.fetchJson<FmpEarning[]>('/earnings-calendar');
+    // FMP returns `epsEstimated`/`revenueEstimated` (verb form) — map to our `epsEstimate`/`revenueEstimate` keys.
+    const raw = await this.fetchJson<Array<Record<string, unknown>>>('/earnings-calendar');
+    return raw.map(r => ({
+      symbol: String(r.symbol ?? ''),
+      date: String(r.date ?? ''),
+      epsActual: r.epsActual === null || r.epsActual === undefined ? null : Number(r.epsActual),
+      epsEstimate: r.epsEstimated === null || r.epsEstimated === undefined ? null : Number(r.epsEstimated),
+      revenueActual: r.revenueActual === null || r.revenueActual === undefined ? null : Number(r.revenueActual),
+      revenueEstimate: r.revenueEstimated === null || r.revenueEstimated === undefined ? null : Number(r.revenueEstimated),
+    }));
   }
 
   async getDividends(ticker: string): Promise<FmpDividend[]> {

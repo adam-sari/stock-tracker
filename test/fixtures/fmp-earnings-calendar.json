@@ -1,4 +1,4 @@
 [
-  {"symbol":"CSCO","date":"2026-05-13","epsActual":null,"epsEstimate":1.04,"revenueActual":null,"revenueEstimate":15558330000,"lastUpdated":"2026-05-13"},
-  {"symbol":"BABA","date":"2026-05-13","epsActual":null,"epsEstimate":0.889,"revenueActual":null,"revenueEstimate":35793330000,"lastUpdated":"2026-05-13"}
+  {"symbol":"CSCO","date":"2026-05-13","epsActual":null,"epsEstimated":1.04,"revenueActual":null,"revenueEstimated":15558330000,"lastUpdated":"2026-05-13"},
+  {"symbol":"BABA","date":"2026-05-13","epsActual":null,"epsEstimated":0.889,"revenueActual":null,"revenueEstimated":35793330000,"lastUpdated":"2026-05-13"}
 ]
