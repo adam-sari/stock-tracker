@@ -1,0 +1,32 @@
+{
+  "chart": {
+    "result": [{
+      "meta": {
+        "symbol": "AAPL",
+        "currency": "USD",
+        "exchangeName": "NMS",
+        "regularMarketPrice": 294.8,
+        "regularMarketTime": 1778616001,
+        "previousClose": 292.68,
+        "hasPrePostMarketData": true,
+        "gmtoffset": -14400,
+        "tradingPeriods": {
+          "pre":     [[{"start": 1778659200, "end": 1778679000, "gmtoffset": -14400}]],
+          "regular": [[{"start": 1778679000, "end": 1778702400, "gmtoffset": -14400}]],
+          "post":    [[{"start": 1778702400, "end": 1778716800, "gmtoffset": -14400}]]
+        },
+        "dataGranularity": "1m"
+      },
+      "timestamp": [1778659200, 1778659260, 1778679060],
+      "indicators": {
+        "quote": [{
+          "open":   [292.10, 292.20, 294.00],
+          "high":   [292.40, 292.50, 294.30],
+          "low":    [292.05, 292.15, 293.95],
+          "close":  [292.30, 292.40, 294.20],
+          "volume": [1500, 2200, 80000]
+        }]
+      }
+    }]
+  }
+}
