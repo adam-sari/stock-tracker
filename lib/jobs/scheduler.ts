@@ -11,6 +11,7 @@ import { refreshInsiderSentimentOnce } from './refresh-insider-sentiment';
 import { refreshCorporateActionsOnce } from './refresh-corporate-actions';
 import { computeDiscoveryOnce } from './compute-discovery';
 import { refreshWikiPageviewsOnce } from './refresh-wiki-pageviews';
+import { refreshEdgarAlertsOnce } from './refresh-edgar-alerts';
 import { quoteChain, finnhubClient, fmpClient, apewisdomClient, nasdaqHaltsClient } from '../providers';
 import { YahooProvider } from '../providers/yahoo';
 
@@ -65,5 +66,8 @@ export function startSchedulers() {
   // Wikipedia pageviews (attention proxy): daily 02:00 UTC
   cron.schedule('0 2 * * *', safeRun('refresh-wiki-pageviews', () => refreshWikiPageviewsOnce()));
 
-  console.log('[scheduler] started with 12 jobs');
+  // SEC EDGAR full-text alerts (going concern, MAC, restatement): daily 23:00 UTC
+  cron.schedule('0 23 * * *', safeRun('refresh-edgar-alerts', () => refreshEdgarAlertsOnce()));
+
+  console.log('[scheduler] started with 13 jobs');
 }

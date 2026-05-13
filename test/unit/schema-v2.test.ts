@@ -31,9 +31,9 @@ describe('schema v2', () => {
     expect(row).toBeTruthy();
   });
 
-  it('schema_version reports 5', () => {
+  it('schema_version reports 6', () => {
     const v = getDb().prepare(`SELECT MAX(version) AS v FROM schema_version`).get() as { v: number };
-    expect(v.v).toBe(5);
+    expect(v.v).toBe(6);
   });
 
   it('congress_trades.chamber check constraint rejects invalid values', () => {

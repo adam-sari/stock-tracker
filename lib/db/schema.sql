@@ -290,3 +290,20 @@ CREATE TABLE IF NOT EXISTS wiki_pageviews (
 CREATE INDEX IF NOT EXISTS ix_wiki_pageviews_ticker_date ON wiki_pageviews (ticker, date DESC);
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (5);
+
+-- Plan 6 (SEC EDGAR full-text alerts) — 2026-05-14
+
+CREATE TABLE IF NOT EXISTS edgar_alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ticker TEXT NOT NULL,
+  phrase TEXT NOT NULL,
+  filing_url TEXT NOT NULL,
+  filing_date TEXT NOT NULL,
+  snippet TEXT NOT NULL DEFAULT '',
+  fetched_at INTEGER NOT NULL,
+  UNIQUE (ticker, phrase, filing_url)
+);
+CREATE INDEX IF NOT EXISTS ix_edgar_alerts_ticker_date ON edgar_alerts (ticker, filing_date DESC);
+CREATE INDEX IF NOT EXISTS ix_edgar_alerts_phrase ON edgar_alerts (phrase);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (6);
