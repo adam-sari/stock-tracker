@@ -64,3 +64,52 @@ export function listActivityForTicker(ticker: string, limit = 100): ActivityEven
   `).all(t, t, t, t, t, t, limit) as ActivityEvent[];
   return rows;
 }
+
+/**
+ * Same shape as listActivityForTicker but filters to a set of tickers (the
+ * user's holdings + watchlist). Returns the union of activity across all of
+ * them, sorted DESC by ts.
+ */
+export function listActivityForTickers(tickers: string[], limit = 50): ActivityEvent[] {
+  if (tickers.length === 0) return [];
+  const db = getDb();
+  const upper = tickers.map(t => t.toUpperCase());
+  const placeholders = upper.map(() => '?').join(',');
+  // Build the same UNION as listActivityForTicker but with IN clause
+  const rows = db.prepare(`
+    SELECT * FROM (
+      SELECT published_at AS ts, 'news' AS kind, ticker, headline AS title,
+             ('via ' || source) AS detail, url AS link, source
+        FROM news WHERE ticker IN (${placeholders})
+      UNION ALL
+      SELECT filed_at AS ts, 'insider' AS kind, ticker,
+             (insider_name || ' ' || code) AS title,
+             ('shares ' || CAST(shares AS TEXT) || (CASE WHEN price IS NOT NULL THEN ' @ $' || CAST(price AS TEXT) ELSE '' END)) AS detail,
+             filing_url AS link, source
+        FROM insider_txns WHERE ticker IN (${placeholders})
+      UNION ALL
+      SELECT disclosed_at AS ts, 'congress' AS kind, ticker,
+             (member || ' ' || kind) AS title,
+             ('$' || CAST(COALESCE(amount_low,0) AS TEXT) || ' - $' || CAST(COALESCE(amount_high,0) AS TEXT) || ' on ' || txn_date) AS detail,
+             ptr_url AS link, source
+        FROM congress_trades WHERE ticker IN (${placeholders})
+      UNION ALL
+      SELECT filed_at AS ts, 'fund' AS kind, fh.ticker,
+             (COALESCE(f.name, fh.cik) || ' position') AS title,
+             ('shares ' || CAST(fh.shares AS TEXT) || ' as of ' || fh.period_end ||
+                CASE WHEN fh.delta_shares IS NOT NULL THEN ' (' || CAST(fh.delta_shares AS TEXT) || ' QoQ)' ELSE '' END) AS detail,
+             NULL AS link, 'edgar_13f' AS source
+        FROM fund_holdings fh LEFT JOIN funds f ON f.cik = fh.cik
+        WHERE fh.ticker IN (${placeholders})
+      UNION ALL
+      SELECT fetched_at AS ts, 'halt' AS kind, ticker,
+             ('Trading halt ' || COALESCE(reason_code, '')) AS title,
+             ('on ' || halt_date || ' ' || halt_time || ' (' || COALESCE(market, '?') || ')') AS detail,
+             NULL AS link, 'nasdaq' AS source
+        FROM trading_halts WHERE ticker IN (${placeholders})
+    )
+    ORDER BY ts DESC
+    LIMIT ?
+  `).all(...upper, ...upper, ...upper, ...upper, ...upper, limit) as ActivityEvent[];
+  return rows;
+}

@@ -6,6 +6,7 @@ import { HoldingsTable } from '@/components/HoldingsTable';
 import { PortfolioSummary } from '@/components/PortfolioSummary';
 import { AddHoldingDrawer } from '@/components/AddHoldingDrawer';
 import { ProviderHealthBadge } from '@/components/ProviderHealthBadge';
+import { DashboardActivityFeed } from '@/components/DashboardActivityFeed';
 import type { PortfolioValue } from '@/lib/computations/portfolio';
 import type { Bar } from '@/lib/providers/types';
 
@@ -100,6 +101,11 @@ export function DashboardClient({ initialValue, initialTags }: Props) {
       <section>
         <h2 className="text-sm uppercase text-muted mb-2">Holdings</h2>
         <HoldingsTable rows={value.rows} tagsByTicker={initialTags} />
+      </section>
+
+      <section>
+        <h2 className="text-sm uppercase text-muted mb-2">Activity on your holdings</h2>
+        <DashboardActivityFeed />
       </section>
     </main>
   );
