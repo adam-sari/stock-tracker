@@ -11,6 +11,9 @@ import { refreshInsiderSentimentOnce } from './refresh-insider-sentiment';
 import { refreshCorporateActionsOnce } from './refresh-corporate-actions';
 import { computeDiscoveryOnce } from './compute-discovery';
 import { quoteChain, finnhubClient, fmpClient, apewisdomClient, nasdaqHaltsClient } from '../providers';
+import { YahooProvider } from '../providers/yahoo';
+
+const yahooForActions = new YahooProvider();
 
 let started = false;
 
@@ -53,7 +56,7 @@ export function startSchedulers() {
   cron.schedule('0 4 * * 1', safeRun('refresh-insider-sentiment', () => refreshInsiderSentimentOnce(finnhubClient())));
 
   // Corporate actions: daily 03:00 UTC
-  cron.schedule('0 3 * * *', safeRun('refresh-corporate-actions', () => refreshCorporateActionsOnce(fmpClient())));
+  cron.schedule('0 3 * * *', safeRun('refresh-corporate-actions', () => refreshCorporateActionsOnce(fmpClient(), yahooForActions)));
 
   // Discovery score recomputation: daily 06:00 UTC
   cron.schedule('0 6 * * *', safeRun('compute-discovery', () => computeDiscoveryOnce()));

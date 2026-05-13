@@ -14,16 +14,27 @@ type YahooMeta = {
   };
 };
 
+type YahooSplitEvent = { date: number; numerator: number; denominator: number; splitRatio: string };
+type YahooDividendEvent = { date: number; amount: number };
+
 type YahooChartResponse = {
   chart: {
     result: Array<{
       meta: YahooMeta;
       timestamp: number[];
       indicators: { quote: Array<{ open: number[]; high: number[]; low: number[]; close: number[]; volume: number[] }> };
+      events?: {
+        splits?: Record<string, YahooSplitEvent>;
+        dividends?: Record<string, YahooDividendEvent>;
+      };
     }>;
     error?: { code: string; description: string } | null;
   };
 };
+
+export type YahooCorporateAction =
+  | { kind: 'split'; exDate: string; ratio: number; raw: string }
+  | { kind: 'dividend'; exDate: string; amount: number };
 
 const USER_AGENT = 'Mozilla/5.0 StockTracker/0.1';
 
@@ -67,6 +78,39 @@ export class YahooProvider implements MarketDataProvider {
     const data = await r.json() as YahooChartResponse;
     if (data.chart.error) return null;
     return data.chart.result?.[0] ?? null;
+  }
+
+  /**
+   * Fetch splits + dividends for a ticker over the past N years via Yahoo's
+   * /v8/finance/chart events payload. Used by refresh-corporate-actions.
+   */
+  async getCorporateActions(ticker: string, years = 10): Promise<YahooCorporateAction[]> {
+    const result = await this.fetchChart(ticker, {
+      range: `${Math.min(20, Math.max(1, years))}y`,
+      interval: '3mo',
+      events: 'split,div',
+    });
+    if (!result || !result.events) return [];
+    const out: YahooCorporateAction[] = [];
+    const splits = result.events.splits ?? {};
+    for (const [, ev] of Object.entries(splits)) {
+      const ratio = ev.denominator > 0 ? ev.numerator / ev.denominator : 0;
+      out.push({
+        kind: 'split',
+        exDate: new Date(ev.date * 1000).toISOString().slice(0, 10),
+        ratio,
+        raw: ev.splitRatio,
+      });
+    }
+    const dividends = result.events.dividends ?? {};
+    for (const [, ev] of Object.entries(dividends)) {
+      out.push({
+        kind: 'dividend',
+        exDate: new Date(ev.date * 1000).toISOString().slice(0, 10),
+        amount: ev.amount,
+      });
+    }
+    return out;
   }
 
   async getLatestQuote(ticker: string): Promise<Quote | null> {
