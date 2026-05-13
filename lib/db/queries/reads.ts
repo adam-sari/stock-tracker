@@ -4,6 +4,10 @@ import type { InsiderTxnRow, InsiderSentimentMonthRow } from './insider';
 import type { CongressTradeRow } from './congress';
 import type { TradingHaltRow } from './halts';
 import type { CorporateActionRow } from './corporate-actions';
+import type { FdaCalendarRow } from './fda-calendar';
+import type { DodContract } from './dod-contracts';
+import type { ArkTradeRow } from './ark-trades';
+import type { EdgarAlert } from './edgar-alerts';
 
 export function listNewsForTicker(ticker: string, limit = 50): NewsRow[] {
   return getDb().prepare(`SELECT * FROM news WHERE ticker = ? ORDER BY published_at DESC LIMIT ?`)
@@ -105,4 +109,52 @@ export function listRecommendationsForTicker(ticker: string, limit = 12): Recomm
 export function listCorporateActionsForTicker(ticker: string, limit = 50): CorporateActionRow[] {
   return getDb().prepare(`SELECT * FROM corporate_actions WHERE ticker = ? ORDER BY ex_date DESC LIMIT ?`)
     .all(ticker.toUpperCase(), limit) as CorporateActionRow[];
+}
+
+export function latestFdaForTicker(ticker: string): FdaCalendarRow | null {
+  const row = getDb()
+    .prepare(`SELECT * FROM fda_calendar WHERE ticker = ? ORDER BY event_date ASC LIMIT 1`)
+    .get(ticker.toUpperCase());
+  return (row as FdaCalendarRow | undefined) ?? null;
+}
+
+export function latestDodForTicker(ticker: string): DodContract | null {
+  const row = getDb()
+    .prepare(`SELECT * FROM dod_contracts WHERE ticker = ? ORDER BY action_date DESC LIMIT 1`)
+    .get(ticker.toUpperCase());
+  return (row as DodContract | undefined) ?? null;
+}
+
+export function latestArkForTicker(ticker: string): ArkTradeRow | null {
+  const row = getDb()
+    .prepare(`SELECT * FROM ark_trades WHERE ticker = ? ORDER BY ts DESC LIMIT 1`)
+    .get(ticker.toUpperCase());
+  return (row as ArkTradeRow | undefined) ?? null;
+}
+
+export function latestEdgarAlertForTicker(ticker: string): EdgarAlert | null {
+  const row = getDb()
+    .prepare(`SELECT * FROM edgar_alerts WHERE ticker = ? ORDER BY filing_date DESC LIMIT 1`)
+    .get(ticker.toUpperCase());
+  return (row as EdgarAlert | undefined) ?? null;
+}
+
+export type WikiTrend = {
+  recent7Avg: number;
+  prior7Avg: number;
+  deltaPct: number;
+};
+
+export function wikiPageviewsTrend(ticker: string): WikiTrend | null {
+  const rows = getDb()
+    .prepare(`SELECT views FROM wiki_pageviews WHERE ticker = ? ORDER BY date DESC LIMIT 14`)
+    .all(ticker.toUpperCase()) as { views: number }[];
+  if (rows.length < 7) return null;
+  const recent = rows.slice(0, 7);
+  const prior = rows.slice(7, 14);
+  if (prior.length < 7) return null;
+  const recent7Avg = recent.reduce((s, r) => s + r.views, 0) / 7;
+  const prior7Avg = prior.reduce((s, r) => s + r.views, 0) / 7;
+  const deltaPct = prior7Avg === 0 ? 0 : ((recent7Avg - prior7Avg) / prior7Avg) * 100;
+  return { recent7Avg, prior7Avg, deltaPct };
 }

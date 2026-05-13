@@ -12,6 +12,7 @@ import { InsidersTab } from './InsidersTab';
 import { FundsTab } from './FundsTab';
 import { CongressTab } from './CongressTab';
 import { SentimentTab } from './SentimentTab';
+import { SignalsPanel } from './SignalsPanel';
 import type { Bar, Quote } from '@/lib/providers/types';
 
 type Props = {
@@ -90,6 +91,8 @@ export function StockDetailClient(props: Props) {
         </section>
         <PositionPanel ticker={ticker} qty={position.qty} avgCost={position.avgCost} currentPrice={quote?.price ?? null} />
       </div>
+
+      <SignalsPanel ticker={ticker} />
 
       <TabStrip active={activeTab} onChange={setActiveTab} />
 
