@@ -19,6 +19,7 @@ export function Chart({ bars, height = 320, showSessions = true }: Props) {
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const sessionPrimitiveRef = useRef<SessionHighlightingPrimitive | null>(null);
+  const barsRef = useRef<Bar[]>(bars);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -43,8 +44,8 @@ export function Chart({ bars, height = 320, showSessions = true }: Props) {
     });
     if (showSessions) {
       const primitive = new SessionHighlightingPrimitive((time) => {
-        const ts = typeof time === 'number' ? time : (time as unknown as { timestamp: number }).timestamp;
-        const bar = bars.find(b => b.ts === ts);
+        const ts = typeof time === 'number' ? time : ((time as unknown) as { timestamp: number }).timestamp;
+        const bar = barsRef.current.find(b => b.ts === ts);
         if (!bar) return null;
         if (bar.session === 'pre') return PRE_COLOR;
         if (bar.session === 'post') return POST_COLOR;
@@ -59,6 +60,7 @@ export function Chart({ bars, height = 320, showSessions = true }: Props) {
   }, [height, showSessions]);
 
   useEffect(() => {
+    barsRef.current = bars;
     if (!seriesRef.current) return;
     const data = bars.map(b => ({
       time: b.ts as Time,

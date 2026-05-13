@@ -34,11 +34,15 @@ export function DashboardClient({ initialValue }: Props) {
 
   useEffect(() => {
     if (!primaryTicker) { setBars([]); return; }
+    const controller = new AbortController();
     const r = RANGES[rangeIdx];
-    fetch(`/api/prices/${primaryTicker}/bars?interval=${r.interval}&range=${r.range}&prepost=true`)
+    fetch(`/api/prices/${primaryTicker}/bars?interval=${r.interval}&range=${r.range}&prepost=true`, {
+      signal: controller.signal,
+    })
       .then(res => res.json())
-      .then(setBars)
-      .catch(() => setBars([]));
+      .then(data => { if (Array.isArray(data)) setBars(data); })
+      .catch((e) => { if (e.name !== 'AbortError') setBars([]); });
+    return () => controller.abort();
   }, [primaryTicker, rangeIdx]);
 
   const refreshValue = useCallback(async () => {
