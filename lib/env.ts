@@ -5,10 +5,8 @@ const envSchema = z.object({
   ALPACA_SECRET_KEY: z.string().min(1, 'ALPACA_SECRET_KEY is required'),
   ALPACA_BASE_URL: z.string().url().default('https://paper-api.alpaca.markets/v2'),
   ALPACA_DATA_BASE_URL: z.string().url().default('https://data.alpaca.markets'),
-  // Plan 1 doesn't use Finnhub or FMP yet — they go live in Plan 2.
-  // Marked optional here so a fresh clone with only Alpaca keys boots cleanly.
-  FINNHUB_API_KEY: z.string().optional(),
-  FMP_API_KEY: z.string().optional(),
+  FINNHUB_API_KEY: z.string().min(1, 'FINNHUB_API_KEY is required'),
+  FMP_API_KEY: z.string().min(1, 'FMP_API_KEY is required'),
   DB_PATH: z.string().default('./db/stocks.db'),
 });
 
