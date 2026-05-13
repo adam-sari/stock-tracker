@@ -1,5 +1,6 @@
 import type { MarketDataProvider, Quote, Bar, BarsOpts, ProviderHealth, Session } from './types';
 import { ProviderError } from './types';
+import { sessionFor } from './session';
 
 type YahooMeta = {
   symbol: string;
@@ -36,10 +37,7 @@ function sessionFromPeriods(ts: number, meta: YahooMeta): Session {
     const post = periods.post?.[0]?.[0];
     if (post && ts >= post.start && ts < post.end) return 'post';
   }
-  const minutes = new Date(ts * 1000).getUTCHours() * 60 + new Date(ts * 1000).getUTCMinutes();
-  if (minutes >= 13 * 60 + 30 && minutes < 20 * 60) return 'regular';
-  if (minutes < 13 * 60 + 30) return 'pre';
-  return 'post';
+  return sessionFor(ts);
 }
 
 export class YahooProvider implements MarketDataProvider {

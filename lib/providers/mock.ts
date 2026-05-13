@@ -1,20 +1,10 @@
-import type { MarketDataProvider, Quote, Bar, BarsOpts, ProviderHealth, Session } from './types';
+import type { MarketDataProvider, Quote, Bar, BarsOpts, ProviderHealth } from './types';
+import { sessionFor } from './session';
 
 export type MockConfig = {
   basePrices?: Record<string, number>;
   volatility?: number;
 };
-
-const REGULAR_OPEN_MIN = 13 * 60 + 30;
-const REGULAR_CLOSE_MIN = 20 * 60;
-
-function sessionFor(ts: Date): Session {
-  const minutes = ts.getUTCHours() * 60 + ts.getUTCMinutes();
-  if (minutes < 8 * 60) return 'pre';
-  if (minutes < REGULAR_OPEN_MIN) return 'pre';
-  if (minutes >= REGULAR_CLOSE_MIN) return 'post';
-  return 'regular';
-}
 
 export class MockProvider implements MarketDataProvider {
   readonly name = 'mock';
