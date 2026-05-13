@@ -1,0 +1,4 @@
+[
+  {"category":"company","datetime":1778671534,"headline":"Apple unveils new chip family at WWDC","id":140282946,"image":"https://example.com/img.png","related":"AAPL","source":"Yahoo","summary":"Apple announced...","url":"https://finnhub.io/api/news?id=abc123"},
+  {"category":"company","datetime":1778670660,"headline":"CEO discusses outlook","id":140282951,"image":"","related":"AAPL","source":"Reuters","summary":"In an interview...","url":"https://finnhub.io/api/news?id=def456"}
+]
