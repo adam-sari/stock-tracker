@@ -6,7 +6,7 @@ import { timeAgo } from '@/lib/time';
 
 type ActivityEvent = {
   ts: number;
-  kind: 'news' | 'insider' | 'congress' | 'fund' | 'sentiment' | 'halt';
+  kind: 'news' | 'insider' | 'congress' | 'fund' | 'sentiment' | 'halt' | 'fda' | 'dod' | 'ark' | 'edgar_alert';
   ticker: string;
   title: string;
   detail: string;
@@ -16,6 +16,7 @@ type ActivityEvent = {
 
 const ICONS: Record<ActivityEvent['kind'], string> = {
   news: '📰', insider: '⬆', congress: '🏛', fund: '💼', sentiment: '💬', halt: '⛔',
+  fda: '💊', dod: '🛡', ark: '🚀', edgar_alert: '⚠️',
 };
 
 const KIND_COLOR: Record<ActivityEvent['kind'], string> = {
@@ -25,6 +26,10 @@ const KIND_COLOR: Record<ActivityEvent['kind'], string> = {
   fund: 'text-amber-300',
   sentiment: 'text-blue-300',
   halt: 'text-red-300',
+  fda: 'text-cyan-300',
+  dod: 'text-blue-300',
+  ark: 'text-fuchsia-300',
+  edgar_alert: 'text-orange-300',
 };
 
 export function DashboardActivityFeed() {

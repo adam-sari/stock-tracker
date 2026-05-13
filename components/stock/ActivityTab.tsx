@@ -5,7 +5,7 @@ import { timeAgo } from '@/lib/time';
 
 type ActivityEvent = {
   ts: number;
-  kind: 'news' | 'insider' | 'congress' | 'fund' | 'sentiment' | 'halt';
+  kind: 'news' | 'insider' | 'congress' | 'fund' | 'sentiment' | 'halt' | 'fda' | 'dod' | 'ark' | 'edgar_alert';
   ticker: string;
   title: string;
   detail: string;
@@ -15,6 +15,7 @@ type ActivityEvent = {
 
 const ICONS: Record<ActivityEvent['kind'], string> = {
   news: '📰', insider: '⬆', congress: '🏛', fund: '💼', sentiment: '💬', halt: '⛔',
+  fda: '💊', dod: '🛡', ark: '🚀', edgar_alert: '⚠️',
 };
 
 const KIND_COLORS: Record<ActivityEvent['kind'], string> = {
@@ -24,6 +25,10 @@ const KIND_COLORS: Record<ActivityEvent['kind'], string> = {
   fund: 'bg-amber-500/10 text-amber-300',
   sentiment: 'bg-blue-500/10 text-blue-300',
   halt: 'bg-red-500/10 text-red-300',
+  fda: 'bg-cyan-500/10 text-cyan-300',
+  dod: 'bg-blue-500/10 text-blue-300',
+  ark: 'bg-fuchsia-500/10 text-fuchsia-300',
+  edgar_alert: 'bg-orange-500/10 text-orange-300',
 };
 
 function ActivitySkeleton() {
