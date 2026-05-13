@@ -28,9 +28,20 @@ describe('loadEnv', () => {
     expect(env.ALPACA_DATA_BASE_URL).toBe('https://data.alpaca.markets');
   });
 
-  it('throws if a required key is missing', () => {
+  it('boots with only Alpaca keys (Finnhub/FMP optional until Plan 2)', () => {
+    process.env.ALPACA_KEY_ID = 'PKXXX';
+    process.env.ALPACA_SECRET_KEY = 'secret';
+
+    const env = loadEnv();
+
+    expect(env.ALPACA_KEY_ID).toBe('PKXXX');
+    expect(env.FINNHUB_API_KEY).toBeUndefined();
+    expect(env.FMP_API_KEY).toBeUndefined();
+  });
+
+  it('throws if ALPACA_SECRET_KEY is missing', () => {
     process.env.ALPACA_KEY_ID = 'PKXXX';
 
-    expect(() => loadEnv()).toThrow(/FINNHUB_API_KEY/);
+    expect(() => loadEnv()).toThrow(/ALPACA_SECRET_KEY/);
   });
 });
