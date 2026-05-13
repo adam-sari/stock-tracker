@@ -10,6 +10,7 @@ import { DashboardActivityFeed } from '@/components/DashboardActivityFeed';
 import { UpcomingEarnings } from '@/components/UpcomingEarnings';
 import { WatchlistPanel } from '@/components/WatchlistPanel';
 import { RunAllJobsButton } from '@/components/RunAllJobsButton';
+import { JobHealthBadge } from '@/components/JobHealthBadge';
 import type { PortfolioValue } from '@/lib/computations/portfolio';
 
 type Props = { initialValue: PortfolioValue; initialTags: Record<string, string[]> };
@@ -103,7 +104,8 @@ export function DashboardClient({ initialValue, initialTags }: Props) {
         <DashboardActivityFeed />
       </section>
 
-      <footer className="flex items-center justify-end border-t border-border pt-4 mt-2">
+      <footer className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-border pt-4 mt-2">
+        <JobHealthBadge />
         <RunAllJobsButton />
       </footer>
     </main>
