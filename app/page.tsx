@@ -18,5 +18,7 @@ export default async function Page() {
     })
   );
   const initialValue = computePortfolioValue(holdings, quotes);
-  return <DashboardClient initialValue={initialValue} />;
+  const tagsMap = (await import('@/lib/db/queries/tags')).listTagsByTickerMap();
+  const tagsByTicker: Record<string, string[]> = Object.fromEntries(tagsMap);
+  return <DashboardClient initialValue={initialValue} initialTags={tagsByTicker} />;
 }

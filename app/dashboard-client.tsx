@@ -9,7 +9,7 @@ import { ProviderHealthBadge } from '@/components/ProviderHealthBadge';
 import type { PortfolioValue } from '@/lib/computations/portfolio';
 import type { Bar } from '@/lib/providers/types';
 
-type Props = { initialValue: PortfolioValue };
+type Props = { initialValue: PortfolioValue; initialTags: Record<string, string[]> };
 
 const RANGES = [
   { label: '1D', range: '1d', interval: '1m' as const },
@@ -21,7 +21,7 @@ const RANGES = [
   { label: 'ALL', range: 'max', interval: '1d' as const },
 ];
 
-export function DashboardClient({ initialValue }: Props) {
+export function DashboardClient({ initialValue, initialTags }: Props) {
   const [value, setValue] = useState<PortfolioValue>(initialValue);
   const [bars, setBars] = useState<Bar[]>([]);
   const [rangeIdx, setRangeIdx] = useState(0);
@@ -86,7 +86,7 @@ export function DashboardClient({ initialValue }: Props) {
 
       <section>
         <h2 className="text-sm uppercase text-muted mb-2">Holdings</h2>
-        <HoldingsTable rows={value.rows} />
+        <HoldingsTable rows={value.rows} tagsByTicker={initialTags} />
       </section>
     </main>
   );
