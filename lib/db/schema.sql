@@ -307,3 +307,20 @@ CREATE INDEX IF NOT EXISTS ix_edgar_alerts_ticker_date ON edgar_alerts (ticker, 
 CREATE INDEX IF NOT EXISTS ix_edgar_alerts_phrase ON edgar_alerts (phrase);
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (6);
+
+-- Plan 7 (DOD contract awards via USAspending) — 2026-05-14
+
+CREATE TABLE IF NOT EXISTS dod_contracts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ticker TEXT NOT NULL,
+  recipient_name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  award_amount REAL NOT NULL DEFAULT 0,
+  action_date TEXT NOT NULL,
+  agency TEXT NOT NULL DEFAULT '',
+  fetched_at INTEGER NOT NULL,
+  UNIQUE (ticker, action_date, recipient_name, award_amount)
+);
+CREATE INDEX IF NOT EXISTS ix_dod_contracts_ticker_date ON dod_contracts (ticker, action_date DESC);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (7);

@@ -24,6 +24,7 @@ describe('schema v2', () => {
     'news', 'insider_txns', 'insider_sentiment_monthly', 'funds', 'fund_holdings',
     'congress_trades', 'sentiment_snapshots', 'trading_halts', 'corporate_actions',
     'earnings_calendar', 'analyst_recommendations', 'cusip_ticker_map',
+    'dod_contracts',
   ];
 
   it.each(newTables)('table %s exists', (table) => {
@@ -31,9 +32,9 @@ describe('schema v2', () => {
     expect(row).toBeTruthy();
   });
 
-  it('schema_version reports 6', () => {
+  it('schema_version reports 7', () => {
     const v = getDb().prepare(`SELECT MAX(version) AS v FROM schema_version`).get() as { v: number };
-    expect(v.v).toBe(6);
+    expect(v.v).toBe(7);
   });
 
   it('congress_trades.chamber check constraint rejects invalid values', () => {

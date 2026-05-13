@@ -12,6 +12,7 @@ import { refreshCorporateActionsOnce } from './refresh-corporate-actions';
 import { computeDiscoveryOnce } from './compute-discovery';
 import { refreshWikiPageviewsOnce } from './refresh-wiki-pageviews';
 import { refreshEdgarAlertsOnce } from './refresh-edgar-alerts';
+import { refreshDodContractsOnce } from './refresh-dod-contracts';
 import { quoteChain, finnhubClient, fmpClient, apewisdomClient, nasdaqHaltsClient } from '../providers';
 import { YahooProvider } from '../providers/yahoo';
 
@@ -69,5 +70,8 @@ export function startSchedulers() {
   // SEC EDGAR full-text alerts (going concern, MAC, restatement): daily 23:00 UTC
   cron.schedule('0 23 * * *', safeRun('refresh-edgar-alerts', () => refreshEdgarAlertsOnce()));
 
-  console.log('[scheduler] started with 13 jobs');
+  // DOD contract awards via USAspending (defense names): daily 04:00 UTC
+  cron.schedule('0 4 * * *', safeRun('refresh-dod-contracts', () => refreshDodContractsOnce()));
+
+  console.log('[scheduler] started with 14 jobs');
 }
