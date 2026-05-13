@@ -7,6 +7,7 @@ import { PortfolioSummary } from '@/components/PortfolioSummary';
 import { AddHoldingDrawer } from '@/components/AddHoldingDrawer';
 import { ProviderHealthBadge } from '@/components/ProviderHealthBadge';
 import { DashboardActivityFeed } from '@/components/DashboardActivityFeed';
+import { UpcomingEarnings } from '@/components/UpcomingEarnings';
 import type { PortfolioValue } from '@/lib/computations/portfolio';
 import type { Bar } from '@/lib/providers/types';
 
@@ -79,7 +80,10 @@ export function DashboardClient({ initialValue, initialTags }: Props) {
         </div>
       </header>
 
-      <PortfolioSummary value={value} />
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+        <PortfolioSummary value={value} />
+        <UpcomingEarnings />
+      </div>
 
       <section>
         <div className="flex items-center gap-3 mb-2">
