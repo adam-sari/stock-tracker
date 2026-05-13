@@ -1,10 +1,11 @@
-export type SignalKind = 'insider' | 'congress' | 'funds' | 'halts' | 'volume';
+export type SignalKind = 'insider' | 'congress' | 'funds' | 'halts' | 'volume' | 'sentiment';
 
 export type InsiderClusterScore = { score: number; distinctBuyers: number };
 export type CongressScore = { score: number; buys: number; sales: number };
 export type FundAccumulationScore = { score: number; accumulators: number };
 export type HaltScore = { score: number; reasonCode: string };
 export type VolumeBreakoutScore = { score: number; latestVolume: number; avgPriorVolume: number };
+export type SentimentSurgeScore = { score: number; latestMentions: number; surgePct: number };
 
 export type SignalEntry = { kind: SignalKind; score: number; weight: number; detail: string };
 
@@ -14,9 +15,9 @@ export type DiscoveryScore = {
   signals: SignalEntry[];
 };
 
-export type Weights = { insider: number; congress: number; funds: number; halts: number; volume: number };
+export type Weights = { insider: number; congress: number; funds: number; halts: number; volume: number; sentiment: number };
 
-export const DEFAULT_WEIGHTS: Weights = { insider: 1, congress: 1, funds: 1, halts: 1, volume: 1 };
+export const DEFAULT_WEIGHTS: Weights = { insider: 1, congress: 1, funds: 1, halts: 1, volume: 1, sentiment: 1 };
 
 const MAX_INSIDER_CLUSTER = 5;     // saturate at 5 distinct buyers
 const MAX_CONGRESS_BUYERS = 4;     // saturate at 4 distinct members
@@ -148,6 +149,43 @@ export function scoreVolumeBreakout(
   return out;
 }
 
+type SentimentRow = { ticker: string; ts: number; mentions: number; mentions_24h_ago: number | null };
+
+/**
+ * Sentiment surge signal: latest snapshot per ticker.
+ * If mentions / mentions_24h_ago > 2.0, score = min(1, (ratio - 1) / 5).
+ */
+export function scoreSentimentSurge(
+  rows: SentimentRow[],
+  lookbackHours = 24,
+): Map<string, SentimentSurgeScore> {
+  const cutoff = Math.floor(Date.now() / 1000) - lookbackHours * 3600;
+
+  // Latest snapshot per ticker within lookback window
+  const latestByTicker = new Map<string, SentimentRow>();
+  for (const r of rows) {
+    if (r.ts < cutoff) continue;
+    const existing = latestByTicker.get(r.ticker);
+    if (!existing || r.ts > existing.ts) {
+      latestByTicker.set(r.ticker, r);
+    }
+  }
+
+  const out = new Map<string, SentimentSurgeScore>();
+  for (const [ticker, snap] of latestByTicker) {
+    const prior = snap.mentions_24h_ago;
+    if (!prior || prior <= 0) continue;
+
+    const ratio = snap.mentions / prior;
+    if (ratio <= 2.0) continue;
+
+    const surgePct = (ratio - 1) * 100;
+    const score = Math.min(1, (ratio - 1) / 5);
+    out.set(ticker, { score, latestMentions: snap.mentions, surgePct });
+  }
+  return out;
+}
+
 export function aggregateScores(
   buckets: {
     insider: Map<string, InsiderClusterScore>;
@@ -155,6 +193,7 @@ export function aggregateScores(
     funds: Map<string, FundAccumulationScore>;
     halts: Map<string, HaltScore>;
     volume?: Map<string, VolumeBreakoutScore>;
+    sentiment?: Map<string, SentimentSurgeScore>;
   },
   weights: Weights = DEFAULT_WEIGHTS,
 ): DiscoveryScore[] {
@@ -164,6 +203,7 @@ export function aggregateScores(
     ...buckets.funds.keys(),
     ...buckets.halts.keys(),
     ...(buckets.volume?.keys() ?? []),
+    ...(buckets.sentiment?.keys() ?? []),
   ]);
   const totalWeight = Object.values(weights).reduce((s, w) => s + w, 0) || 1;
 
@@ -192,6 +232,10 @@ export function aggregateScores(
       const e = buckets.volume.get(ticker)!;
       const ratio = e.avgPriorVolume > 0 ? (e.latestVolume / e.avgPriorVolume) : 0;
       signals.push({ kind: 'volume', score: e.score, weight: weights.volume, detail: `${ratio.toFixed(1)}x avg volume` });
+    }
+    if (weights.sentiment > 0 && buckets.sentiment?.has(ticker)) {
+      const e = buckets.sentiment.get(ticker)!;
+      signals.push({ kind: 'sentiment', score: e.score, weight: weights.sentiment, detail: `+${e.surgePct.toFixed(0)}% mention surge` });
     }
     if (signals.length === 0) continue;
     const weightedSum = signals.reduce((s, sig) => s + sig.score * sig.weight, 0);

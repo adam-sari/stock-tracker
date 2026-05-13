@@ -2,7 +2,7 @@ import { getDb } from '../db/connection';
 import { listHoldings } from '../db/queries/holdings';
 import {
   scoreInsiderClusters, scoreCongressBuys, score13FAccumulation, scoreHaltEvents,
-  scoreVolumeBreakout,
+  scoreVolumeBreakout, scoreSentimentSurge,
   aggregateScores, DEFAULT_WEIGHTS,
 } from '../computations/discovery';
 import { upsertDiscoveryScore, clearStaleDiscoveryScores } from '../db/queries/discovery';
@@ -30,6 +30,7 @@ export async function computeDiscoveryOnce(): Promise<{ scored: number }> {
     const fundRows = db.prepare(`SELECT ticker, cik, period_end, delta_shares FROM fund_holdings`).all() as Array<{ ticker: string; cik: string; period_end: string; delta_shares: number | null }>;
     const haltRows = db.prepare(`SELECT ticker, reason_code, fetched_at FROM trading_halts WHERE fetched_at >= ?`).all(now - 7 * 86400) as Array<{ ticker: string; reason_code: string | null; fetched_at: number }>;
     const candleRows = db.prepare(`SELECT ticker, date, volume FROM candles_daily WHERE date >= date('now', '-' || ? || ' days')`).all(CANDLE_FETCH_DAYS) as Array<{ ticker: string; date: string; volume: number }>;
+    const sentimentRows = db.prepare(`SELECT ticker, ts, mentions, mentions_24h_ago FROM sentiment_snapshots WHERE ts >= ?`).all(now - 48 * 3600) as Array<{ ticker: string; ts: number; mentions: number; mentions_24h_ago: number | null }>;
 
     const buckets = {
       insider: scoreInsiderClusters(insiderRows, now, INSIDER_LOOKBACK_DAYS),
@@ -37,6 +38,7 @@ export async function computeDiscoveryOnce(): Promise<{ scored: number }> {
       funds: score13FAccumulation(fundRows),
       halts: scoreHaltEvents(haltRows, now, HALT_LOOKBACK_DAYS),
       volume: scoreVolumeBreakout(candleRows, VOLUME_LOOKBACK_DAYS),
+      sentiment: scoreSentimentSurge(sentimentRows),
     };
 
     const aggregated = aggregateScores(buckets, DEFAULT_WEIGHTS);
