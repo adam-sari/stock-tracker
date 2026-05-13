@@ -16,6 +16,7 @@ import { refreshDodContractsOnce } from './refresh-dod-contracts';
 import { refreshFdaCalendarOnce } from './refresh-fda-calendar';
 import { refreshArkTradesOnce } from './refresh-ark-trades';
 import { refreshCabinetTradesOnce } from './refresh-cabinet-trades';
+import { refreshHiringOnce } from './refresh-hiring';
 import { quoteChain, finnhubClient, fmpClient, apewisdomClient, nasdaqHaltsClient } from '../providers';
 import { YahooProvider } from '../providers/yahoo';
 
@@ -85,5 +86,8 @@ export function startSchedulers() {
   // Executive branch trades via Open Cabinet (OGE Form 278-T): daily 05:30 UTC
   cron.schedule('30 5 * * *', safeRun('refresh-cabinet-trades', () => refreshCabinetTradesOnce()));
 
-  console.log('[scheduler] started with 17 jobs');
+  // Hiring velocity via Greenhouse public API (tech names): daily 04:30 UTC
+  cron.schedule('30 4 * * *', safeRun('refresh-hiring', () => refreshHiringOnce()));
+
+  console.log('[scheduler] started with 18 jobs');
 }

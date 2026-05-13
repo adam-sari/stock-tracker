@@ -378,3 +378,16 @@ CREATE INDEX IF NOT EXISTS ix_cabinet_trades_ticker_date ON cabinet_trades (tick
 CREATE INDEX IF NOT EXISTS ix_cabinet_trades_official_date ON cabinet_trades (official_name, transaction_date DESC);
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (10);
+
+-- Plan 11 (Hiring-velocity via Greenhouse public API) — 2026-05-14
+
+CREATE TABLE IF NOT EXISTS hiring_snapshots (
+  ticker TEXT NOT NULL,
+  ts INTEGER NOT NULL,       -- Unix timestamp of the snapshot
+  ats TEXT NOT NULL,         -- 'greenhouse' | 'lever'
+  open_jobs INTEGER NOT NULL,
+  PRIMARY KEY (ticker, ts)
+);
+CREATE INDEX IF NOT EXISTS ix_hiring_snapshots_ticker_ts ON hiring_snapshots (ticker, ts DESC);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (11);
