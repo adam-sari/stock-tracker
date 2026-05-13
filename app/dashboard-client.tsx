@@ -5,6 +5,7 @@ import { Chart } from '@/components/Chart';
 import { HoldingsTable } from '@/components/HoldingsTable';
 import { PortfolioSummary } from '@/components/PortfolioSummary';
 import { AddHoldingDrawer } from '@/components/AddHoldingDrawer';
+import { ProviderHealthBadge } from '@/components/ProviderHealthBadge';
 import type { PortfolioValue } from '@/lib/computations/portfolio';
 import type { Bar } from '@/lib/providers/types';
 
@@ -54,7 +55,10 @@ export function DashboardClient({ initialValue }: Props) {
     <main className="p-6 max-w-6xl mx-auto flex flex-col gap-6">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Stock Tracker</h1>
-        <AddHoldingDrawer onCreated={refreshValue} />
+        <div className="flex items-center gap-4">
+          <ProviderHealthBadge />
+          <AddHoldingDrawer onCreated={refreshValue} />
+        </div>
       </header>
 
       <PortfolioSummary value={value} />
