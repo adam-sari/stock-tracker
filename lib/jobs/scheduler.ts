@@ -13,6 +13,7 @@ import { computeDiscoveryOnce } from './compute-discovery';
 import { refreshWikiPageviewsOnce } from './refresh-wiki-pageviews';
 import { refreshEdgarAlertsOnce } from './refresh-edgar-alerts';
 import { refreshDodContractsOnce } from './refresh-dod-contracts';
+import { refreshFdaCalendarOnce } from './refresh-fda-calendar';
 import { quoteChain, finnhubClient, fmpClient, apewisdomClient, nasdaqHaltsClient } from '../providers';
 import { YahooProvider } from '../providers/yahoo';
 
@@ -73,5 +74,8 @@ export function startSchedulers() {
   // DOD contract awards via USAspending (defense names): daily 04:00 UTC
   cron.schedule('0 4 * * *', safeRun('refresh-dod-contracts', () => refreshDodContractsOnce()));
 
-  console.log('[scheduler] started with 14 jobs');
+  // FDA advisory committee calendar (biotech catalysts): weekly Sun 05:00 UTC
+  cron.schedule('0 5 * * 0', safeRun('refresh-fda-calendar', () => refreshFdaCalendarOnce(finnhubClient())));
+
+  console.log('[scheduler] started with 15 jobs');
 }

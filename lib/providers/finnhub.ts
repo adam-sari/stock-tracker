@@ -15,6 +15,7 @@ export type FinnhubInsiderTxn = { ticker: string; insiderName: string; code: str
 export type FinnhubInsiderSentimentMonth = { ticker: string; year: number; month: number; change: number; mspr: number };
 export type FinnhubRecommendation = { ticker: string; period: string; strongBuy: number; buy: number; hold: number; sell: number; strongSell: number };
 export type FinnhubEarning = { symbol: string; date: string; hour: string; epsActual: number | null; epsEstimate: number | null; revenueActual: number | null; revenueEstimate: number | null; quarter: number; year: number };
+export type FinnhubFdaEvent = { ticker: string; companyName: string; fdaCommittee: string; eventDescription: string; eventDate: string };
 
 export class FinnhubClient {
   private bucket: TokenBucket;
@@ -95,5 +96,36 @@ export class FinnhubClient {
     const fmt = (d: Date) => d.toISOString().slice(0, 10);
     const d = await this.fetchJson('/calendar/earnings', { from: fmt(from), to: fmt(to) }) as { earningsCalendar?: FinnhubEarning[] };
     return d.earningsCalendar ?? [];
+  }
+
+  /**
+   * FDA advisory committee calendar.
+   * NOTE: As of mid-2026 this endpoint may be restricted to paid tiers.
+   * Returns an empty array on 403 rather than throwing, so callers can
+   * handle gracefully. The caller should check for a null result to detect
+   * the paid-gate scenario.
+   */
+  async getFdaCalendar(): Promise<FinnhubFdaEvent[] | null> {
+    await this.bucket.acquire();
+    const url = new URL(this.baseUrl + '/fda-advisory-committee-calendar');
+    url.searchParams.set('token', this.cfg.apiKey);
+    const r = await fetch(url);
+    // 403 = paid-tier gate; return null to signal this to callers
+    if (r.status === 403) return null;
+    if (!r.ok) throw new ProviderError('finnhub', `/fda-advisory-committee-calendar HTTP ${r.status}`);
+    const arr = (await r.json()) as Array<{
+      ticker?: string;
+      companyName?: string;
+      fdaCommittee?: string;
+      eventDescription?: string;
+      eventDate?: string;
+    }>;
+    return arr.map(a => ({
+      ticker: a.ticker ?? '',
+      companyName: a.companyName ?? '',
+      fdaCommittee: a.fdaCommittee ?? '',
+      eventDescription: a.eventDescription ?? '',
+      eventDate: a.eventDate ?? '',
+    }));
   }
 }

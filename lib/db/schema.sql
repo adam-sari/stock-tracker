@@ -324,3 +324,20 @@ CREATE TABLE IF NOT EXISTS dod_contracts (
 CREATE INDEX IF NOT EXISTS ix_dod_contracts_ticker_date ON dod_contracts (ticker, action_date DESC);
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (7);
+
+-- Plan 8 (FDA committee calendar via Finnhub) — 2026-05-14
+
+CREATE TABLE IF NOT EXISTS fda_calendar (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ticker TEXT NOT NULL,
+  company_name TEXT NOT NULL DEFAULT '',
+  committee TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  event_date TEXT NOT NULL,
+  fetched_at INTEGER NOT NULL,
+  UNIQUE (ticker, event_date, committee)
+);
+CREATE INDEX IF NOT EXISTS ix_fda_calendar_ticker_date ON fda_calendar (ticker, event_date DESC);
+CREATE INDEX IF NOT EXISTS ix_fda_calendar_event_date ON fda_calendar (event_date);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (8);
