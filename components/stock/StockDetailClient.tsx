@@ -5,7 +5,7 @@ import { Chart } from '@/components/Chart';
 import { StockHeader } from './StockHeader';
 import { PositionPanel } from './PositionPanel';
 import { AboutPanel } from './AboutPanel';
-import { TabStrip, TAB_IDS, type TabId } from './TabStrip';
+import { TabStrip, type TabId } from './TabStrip';
 import { ActivityTab } from './ActivityTab';
 import { NewsTab } from './NewsTab';
 import { InsidersTab } from './InsidersTab';

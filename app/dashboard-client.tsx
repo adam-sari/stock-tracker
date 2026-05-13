@@ -34,15 +34,28 @@ export function DashboardClient({ initialValue, initialTags }: Props) {
 
   useEffect(() => {
     if (!primaryTicker) { setBars([]); return; }
-    const controller = new AbortController();
     const r = RANGES[rangeIdx];
-    fetch(`/api/prices/${primaryTicker}/bars?interval=${r.interval}&range=${r.range}&prepost=true`, {
-      signal: controller.signal,
-    })
-      .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setBars(data); })
-      .catch((e) => { if (e.name !== 'AbortError') setBars([]); });
-    return () => controller.abort();
+    let cancelled = false;
+
+    const load = async () => {
+      const controller = new AbortController();
+      try {
+        const res = await fetch(`/api/prices/${primaryTicker}/bars?interval=${r.interval}&range=${r.range}&prepost=true`, {
+          signal: controller.signal,
+        });
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data)) setBars(data);
+      } catch (e) {
+        if (!cancelled && (e as Error).name !== 'AbortError') setBars([]);
+      }
+      return () => controller.abort();
+    };
+
+    load();
+    // Poll live: 30s for minute charts, 5min for daily charts
+    const pollMs = r.interval === '1m' ? 30_000 : 5 * 60_000;
+    const id = setInterval(load, pollMs);
+    return () => { cancelled = true; clearInterval(id); };
   }, [primaryTicker, rangeIdx]);
 
   const refreshValue = useCallback(async () => {
