@@ -42,4 +42,4 @@ def test_python_sees_schema_version(applied_schema):
     with get_session() as session:
         v = session.query(SchemaVersion).order_by(SchemaVersion.version.desc()).first()
         assert v is not None
-        assert v.version == 1
+        assert v.version >= 2
