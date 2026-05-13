@@ -1,0 +1,4 @@
+[
+  {"symbol":"SJM","disclosureDate":"2026-05-11","transactionDate":"2026-04-23","firstName":"Gary","lastName":"Peters","office":"Gary Peters","district":"MI","owner":"Self","assetDescription":"The J M Smucker Company","assetType":"Stock","type":"Purchase","amount":"$1,001 - $15,000","comment":"","link":"https://efdsearch.senate.gov/search/view/ptr/969f5bc0-89d8-4c76-a55e-944fb03aff0d/"},
+  {"symbol":"AAPL","disclosureDate":"2026-05-10","transactionDate":"2026-04-15","firstName":"Jane","lastName":"Doe","office":"Jane Doe","district":"CA","owner":"Self","assetDescription":"Apple Inc","assetType":"Stock","type":"Sale","amount":"$15,001 - $50,000","comment":"","link":"https://efdsearch.senate.gov/search/view/ptr/abc-def-ghi/"}
+]

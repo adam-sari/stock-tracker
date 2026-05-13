@@ -1,0 +1,4 @@
+[
+  {"symbol":"AAPL","date":"2026-05-11","recordDate":"2026-05-11","paymentDate":"2026-05-14","declarationDate":"2026-04-30","adjDividend":0.27,"dividend":0.27,"yield":0.3587,"frequency":"Quarterly"},
+  {"symbol":"AAPL","date":"2026-02-09","recordDate":"2026-02-09","paymentDate":"2026-02-12","declarationDate":"2026-01-29","adjDividend":0.26,"dividend":0.26,"yield":0.3787,"frequency":"Quarterly"}
+]
