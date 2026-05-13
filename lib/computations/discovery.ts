@@ -1,9 +1,10 @@
-export type SignalKind = 'insider' | 'congress' | 'funds' | 'halts';
+export type SignalKind = 'insider' | 'congress' | 'funds' | 'halts' | 'volume';
 
 export type InsiderClusterScore = { score: number; distinctBuyers: number };
 export type CongressScore = { score: number; buys: number; sales: number };
 export type FundAccumulationScore = { score: number; accumulators: number };
 export type HaltScore = { score: number; reasonCode: string };
+export type VolumeBreakoutScore = { score: number; latestVolume: number; avgPriorVolume: number };
 
 export type SignalEntry = { kind: SignalKind; score: number; weight: number; detail: string };
 
@@ -13,9 +14,9 @@ export type DiscoveryScore = {
   signals: SignalEntry[];
 };
 
-export type Weights = { insider: number; congress: number; funds: number; halts: number };
+export type Weights = { insider: number; congress: number; funds: number; halts: number; volume: number };
 
-export const DEFAULT_WEIGHTS: Weights = { insider: 1, congress: 1, funds: 1, halts: 1 };
+export const DEFAULT_WEIGHTS: Weights = { insider: 1, congress: 1, funds: 1, halts: 1, volume: 1 };
 
 const MAX_INSIDER_CLUSTER = 5;     // saturate at 5 distinct buyers
 const MAX_CONGRESS_BUYERS = 4;     // saturate at 4 distinct members
@@ -108,12 +109,52 @@ export function scoreHaltEvents(rows: HaltRow[], now: number, lookbackDays: numb
   return out;
 }
 
+type CandleRow = { ticker: string; date: string; volume: number };
+
+/**
+ * Volume breakout signal: latest day's volume vs. avg of prior N days.
+ * If ratio > 2.0, score = min(1, (ratio - 1) / 4).
+ */
+export function scoreVolumeBreakout(
+  rows: CandleRow[],
+  lookbackDays = 30,
+): Map<string, VolumeBreakoutScore> {
+  // Group rows by ticker, sorted by date asc
+  const byTicker = new Map<string, CandleRow[]>();
+  for (const r of rows) {
+    if (!byTicker.has(r.ticker)) byTicker.set(r.ticker, []);
+    byTicker.get(r.ticker)!.push(r);
+  }
+
+  const out = new Map<string, VolumeBreakoutScore>();
+  for (const [ticker, candles] of byTicker) {
+    const sorted = [...candles].sort((a, b) => a.date.localeCompare(b.date));
+    if (sorted.length < 2) continue;
+
+    // Most recent day is the "latest"; prior up to lookbackDays are the baseline
+    const latest = sorted[sorted.length - 1];
+    const prior = sorted.slice(-(lookbackDays + 1), -1); // up to lookbackDays rows before latest
+    if (prior.length === 0) continue;
+
+    const avgPriorVolume = prior.reduce((s, r) => s + r.volume, 0) / prior.length;
+    if (avgPriorVolume <= 0) continue;
+
+    const ratio = latest.volume / avgPriorVolume;
+    if (ratio <= 2.0) continue;
+
+    const score = Math.min(1, (ratio - 1) / 4);
+    out.set(ticker, { score, latestVolume: latest.volume, avgPriorVolume });
+  }
+  return out;
+}
+
 export function aggregateScores(
   buckets: {
     insider: Map<string, InsiderClusterScore>;
     congress: Map<string, CongressScore>;
     funds: Map<string, FundAccumulationScore>;
     halts: Map<string, HaltScore>;
+    volume?: Map<string, VolumeBreakoutScore>;
   },
   weights: Weights = DEFAULT_WEIGHTS,
 ): DiscoveryScore[] {
@@ -122,6 +163,7 @@ export function aggregateScores(
     ...buckets.congress.keys(),
     ...buckets.funds.keys(),
     ...buckets.halts.keys(),
+    ...(buckets.volume?.keys() ?? []),
   ]);
   const totalWeight = Object.values(weights).reduce((s, w) => s + w, 0) || 1;
 
@@ -145,6 +187,11 @@ export function aggregateScores(
     if (weights.halts > 0 && buckets.halts.has(ticker)) {
       const e = buckets.halts.get(ticker)!;
       signals.push({ kind: 'halts', score: e.score, weight: weights.halts, detail: `recent halt (${e.reasonCode || '?'})` });
+    }
+    if (weights.volume > 0 && buckets.volume?.has(ticker)) {
+      const e = buckets.volume.get(ticker)!;
+      const ratio = e.avgPriorVolume > 0 ? (e.latestVolume / e.avgPriorVolume) : 0;
+      signals.push({ kind: 'volume', score: e.score, weight: weights.volume, detail: `${ratio.toFixed(1)}x avg volume` });
     }
     if (signals.length === 0) continue;
     const weightedSum = signals.reduce((s, sig) => s + sig.score * sig.weight, 0);

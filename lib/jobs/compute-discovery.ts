@@ -2,6 +2,7 @@ import { getDb } from '../db/connection';
 import { listHoldings } from '../db/queries/holdings';
 import {
   scoreInsiderClusters, scoreCongressBuys, score13FAccumulation, scoreHaltEvents,
+  scoreVolumeBreakout,
   aggregateScores, DEFAULT_WEIGHTS,
 } from '../computations/discovery';
 import { upsertDiscoveryScore, clearStaleDiscoveryScores } from '../db/queries/discovery';
@@ -9,6 +10,8 @@ import { upsertDiscoveryScore, clearStaleDiscoveryScores } from '../db/queries/d
 const INSIDER_LOOKBACK_DAYS = 30;
 const CONGRESS_LOOKBACK_DAYS = 14;
 const HALT_LOOKBACK_DAYS = 3;
+const VOLUME_LOOKBACK_DAYS = 30;
+const CANDLE_FETCH_DAYS = 60; // fetch 60 days of candles for 30-day lookback baseline
 
 export async function computeDiscoveryOnce(): Promise<{ scored: number }> {
   const db = getDb();
@@ -26,12 +29,14 @@ export async function computeDiscoveryOnce(): Promise<{ scored: number }> {
     const congressRows = db.prepare(`SELECT ticker, member, kind, disclosed_at FROM congress_trades WHERE disclosed_at >= ?`).all(now - 30 * 86400) as Array<{ ticker: string; member: string; kind: string; disclosed_at: number }>;
     const fundRows = db.prepare(`SELECT ticker, cik, period_end, delta_shares FROM fund_holdings`).all() as Array<{ ticker: string; cik: string; period_end: string; delta_shares: number | null }>;
     const haltRows = db.prepare(`SELECT ticker, reason_code, fetched_at FROM trading_halts WHERE fetched_at >= ?`).all(now - 7 * 86400) as Array<{ ticker: string; reason_code: string | null; fetched_at: number }>;
+    const candleRows = db.prepare(`SELECT ticker, date, volume FROM candles_daily WHERE date >= date('now', '-' || ? || ' days')`).all(CANDLE_FETCH_DAYS) as Array<{ ticker: string; date: string; volume: number }>;
 
     const buckets = {
       insider: scoreInsiderClusters(insiderRows, now, INSIDER_LOOKBACK_DAYS),
       congress: scoreCongressBuys(congressRows, now, CONGRESS_LOOKBACK_DAYS),
       funds: score13FAccumulation(fundRows),
       halts: scoreHaltEvents(haltRows, now, HALT_LOOKBACK_DAYS),
+      volume: scoreVolumeBreakout(candleRows, VOLUME_LOOKBACK_DAYS),
     };
 
     const aggregated = aggregateScores(buckets, DEFAULT_WEIGHTS);

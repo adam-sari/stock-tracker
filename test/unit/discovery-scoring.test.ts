@@ -4,6 +4,7 @@ import {
   scoreCongressBuys,
   score13FAccumulation,
   scoreHaltEvents,
+  scoreVolumeBreakout,
   aggregateScores,
   DEFAULT_WEIGHTS,
 } from '@/lib/computations/discovery';
@@ -107,7 +108,8 @@ describe('aggregateScores', () => {
     const halts = new Map();
     const agg = aggregateScores({ insider, congress, funds, halts }, DEFAULT_WEIGHTS);
     expect(agg[0].ticker).toBe('AAPL');
-    expect(agg[0].score).toBeCloseTo((0.8 + 0.5) / 4, 4); // 4 signals total, but only 2 active
+    // DEFAULT_WEIGHTS has 5 signals (insider, congress, funds, halts, volume) each weight=1
+    expect(agg[0].score).toBeCloseTo((0.8 + 0.5) / 5, 4);
     expect(agg[0].signals).toHaveLength(2);
   });
 
@@ -125,8 +127,48 @@ describe('aggregateScores', () => {
     const congress = new Map([['A', { score: 1.0, buys: 3, sales: 0 }]]);
     const funds = new Map();
     const halts = new Map();
-    const agg = aggregateScores({ insider, congress, funds, halts }, { insider: 0, congress: 1, funds: 1, halts: 1 });
+    const agg = aggregateScores({ insider, congress, funds, halts }, { insider: 0, congress: 1, funds: 1, halts: 1, volume: 1 });
     // Only congress contributes
     expect(agg[0].signals.map(s => s.kind)).toEqual(['congress']);
+  });
+});
+
+describe('scoreVolumeBreakout', () => {
+  function makeCandles(ticker: string, volumes: number[], baseDate = '2026-05-01') {
+    return volumes.map((volume, i) => {
+      const d = new Date(baseDate);
+      d.setDate(d.getDate() + i);
+      return { ticker, date: d.toISOString().slice(0, 10), volume };
+    });
+  }
+
+  it('signals a breakout when latest volume is more than 2x the prior average', () => {
+    // 30 prior days at 1_000_000, then a breakout day at 5_000_000 (5x)
+    const rows = makeCandles('PLTR', [...Array(30).fill(1_000_000), 5_000_000]);
+    const scores = scoreVolumeBreakout(rows, 30);
+    const entry = scores.get('PLTR');
+    expect(entry).toBeDefined();
+    // ratio = 5.0 => score = min(1, (5-1)/4) = 1.0
+    expect(entry!.score).toBe(1.0);
+    expect(entry!.latestVolume).toBe(5_000_000);
+    expect(entry!.avgPriorVolume).toBeCloseTo(1_000_000, 0);
+  });
+
+  it('does not signal when latest volume is at or below 2x average', () => {
+    // 10 prior days at 1_000_000, then 1_800_000 (1.8x — below threshold)
+    const rows = makeCandles('AAPL', [...Array(10).fill(1_000_000), 1_800_000]);
+    const scores = scoreVolumeBreakout(rows, 30);
+    expect(scores.get('AAPL')).toBeUndefined();
+  });
+
+  it('score is capped at 1.0 for extreme volume spikes', () => {
+    const rows = makeCandles('TSLA', [...Array(10).fill(100_000), 10_000_000]);
+    const scores = scoreVolumeBreakout(rows, 30);
+    expect(scores.get('TSLA')!.score).toBe(1.0);
+  });
+
+  it('returns empty map when there is only one candle per ticker', () => {
+    const rows = [{ ticker: 'SOLO', date: '2026-05-14', volume: 999_999 }];
+    expect(scoreVolumeBreakout(rows, 30).size).toBe(0);
   });
 });
