@@ -23,7 +23,7 @@ describe('db connection + migrate', () => {
     const db = getDb();
     applySchema(db);
     const row = db.prepare('SELECT MAX(version) AS version FROM schema_version').get() as { version: number };
-    expect(row.version).toBe(4);
+    expect(row.version).toBe(5);
   });
 
   it('enables WAL mode', () => {

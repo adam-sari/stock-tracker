@@ -278,3 +278,15 @@ CREATE TABLE IF NOT EXISTS discovery_scores (
 CREATE INDEX IF NOT EXISTS ix_discovery_scores_score ON discovery_scores (score DESC);
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (4);
+
+-- Plan 5 (Wikipedia pageviews) — 2026-05-14
+
+CREATE TABLE IF NOT EXISTS wiki_pageviews (
+  ticker TEXT NOT NULL,
+  date TEXT NOT NULL,
+  views INTEGER NOT NULL,
+  PRIMARY KEY (ticker, date)
+);
+CREATE INDEX IF NOT EXISTS ix_wiki_pageviews_ticker_date ON wiki_pageviews (ticker, date DESC);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (5);

@@ -10,6 +10,7 @@ import { refreshRecommendationsOnce } from './refresh-recommendations';
 import { refreshInsiderSentimentOnce } from './refresh-insider-sentiment';
 import { refreshCorporateActionsOnce } from './refresh-corporate-actions';
 import { computeDiscoveryOnce } from './compute-discovery';
+import { refreshWikiPageviewsOnce } from './refresh-wiki-pageviews';
 import { quoteChain, finnhubClient, fmpClient, apewisdomClient, nasdaqHaltsClient } from '../providers';
 import { YahooProvider } from '../providers/yahoo';
 
@@ -61,5 +62,8 @@ export function startSchedulers() {
   // Discovery score recomputation: daily 06:00 UTC
   cron.schedule('0 6 * * *', safeRun('compute-discovery', () => computeDiscoveryOnce()));
 
-  console.log('[scheduler] started with 11 jobs');
+  // Wikipedia pageviews (attention proxy): daily 02:00 UTC
+  cron.schedule('0 2 * * *', safeRun('refresh-wiki-pageviews', () => refreshWikiPageviewsOnce()));
+
+  console.log('[scheduler] started with 12 jobs');
 }
