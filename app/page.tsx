@@ -1,8 +1,22 @@
-export default function Dashboard() {
-  return (
-    <main className="p-8">
-      <h1 className="text-2xl font-semibold">Stock Tracker</h1>
-      <p className="text-muted mt-2">Foundation up. Real dashboard arriving in later tasks.</p>
-    </main>
+import { listHoldings } from '@/lib/db/queries/holdings';
+import { computePortfolioValue } from '@/lib/computations/portfolio';
+import { quoteChain } from '@/lib/providers';
+import { applySchema } from '@/lib/db/migrate';
+import { DashboardClient } from './dashboard-client';
+
+applySchema();
+
+export const dynamic = 'force-dynamic';
+
+export default async function Page() {
+  const holdings = listHoldings();
+  const quotes = new Map<string, number>();
+  await Promise.all(
+    holdings.map(async h => {
+      const q = await quoteChain().getLatestQuote(h.ticker);
+      if (q) quotes.set(h.ticker, q.price);
+    })
   );
+  const initialValue = computePortfolioValue(holdings, quotes);
+  return <DashboardClient initialValue={initialValue} />;
 }
