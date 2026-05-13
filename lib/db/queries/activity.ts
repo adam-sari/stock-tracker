@@ -2,7 +2,7 @@ import { getDb } from '../connection';
 
 export type ActivityEvent = {
   ts: number;                              // sort key, epoch seconds
-  kind: 'news' | 'insider' | 'congress' | 'fund' | 'sentiment' | 'halt';
+  kind: 'news' | 'insider' | 'congress' | 'fund' | 'sentiment' | 'halt' | 'fda' | 'dod' | 'ark' | 'edgar_alert';
   ticker: string;
   title: string;
   detail: string;
@@ -58,10 +58,36 @@ export function listActivityForTicker(ticker: string, limit = 100): ActivityEven
              ('on ' || halt_date || ' ' || halt_time || ' (' || COALESCE(market, '?') || ')') AS detail,
              NULL AS link, 'nasdaq' AS source
         FROM trading_halts WHERE ticker = ?
+      UNION ALL
+      SELECT (CAST(strftime('%s', event_date || ' 00:00:00') AS INTEGER)) AS ts,
+             'fda' AS kind, ticker,
+             ('FDA: ' || COALESCE(committee, '')) AS title,
+             COALESCE(description, '') AS detail,
+             NULL AS link, 'finnhub' AS source
+        FROM fda_calendar WHERE ticker = ?
+      UNION ALL
+      SELECT (CAST(strftime('%s', action_date || ' 00:00:00') AS INTEGER)) AS ts,
+             'dod' AS kind, ticker,
+             ('DOD contract: $' || CAST(award_amount AS TEXT)) AS title,
+             (recipient_name || ' — ' || COALESCE(description, '')) AS detail,
+             NULL AS link, 'usaspending' AS source
+        FROM dod_contracts WHERE ticker = ?
+      UNION ALL
+      SELECT ts, 'ark' AS kind, ticker,
+             ('ARK ' || fund || ' ' || direction) AS title,
+             ('shares ' || CAST(shares AS TEXT)) AS detail,
+             NULL AS link, 'ark-funds' AS source
+        FROM ark_trades WHERE ticker = ?
+      UNION ALL
+      SELECT fetched_at AS ts, 'edgar_alert' AS kind, ticker,
+             ('EDGAR: ' || phrase) AS title,
+             COALESCE(snippet, '') AS detail,
+             filing_url AS link, 'sec_edgar' AS source
+        FROM edgar_alerts WHERE ticker = ?
     )
     ORDER BY ts DESC
     LIMIT ?
-  `).all(t, t, t, t, t, t, limit) as ActivityEvent[];
+  `).all(t, t, t, t, t, t, t, t, t, t, limit) as ActivityEvent[];
   return rows;
 }
 
@@ -107,9 +133,35 @@ export function listActivityForTickers(tickers: string[], limit = 50): ActivityE
              ('on ' || halt_date || ' ' || halt_time || ' (' || COALESCE(market, '?') || ')') AS detail,
              NULL AS link, 'nasdaq' AS source
         FROM trading_halts WHERE ticker IN (${placeholders})
+      UNION ALL
+      SELECT (CAST(strftime('%s', event_date || ' 00:00:00') AS INTEGER)) AS ts,
+             'fda' AS kind, ticker,
+             ('FDA: ' || COALESCE(committee, '')) AS title,
+             COALESCE(description, '') AS detail,
+             NULL AS link, 'finnhub' AS source
+        FROM fda_calendar WHERE ticker IN (${placeholders})
+      UNION ALL
+      SELECT (CAST(strftime('%s', action_date || ' 00:00:00') AS INTEGER)) AS ts,
+             'dod' AS kind, ticker,
+             ('DOD contract: $' || CAST(award_amount AS TEXT)) AS title,
+             (recipient_name || ' — ' || COALESCE(description, '')) AS detail,
+             NULL AS link, 'usaspending' AS source
+        FROM dod_contracts WHERE ticker IN (${placeholders})
+      UNION ALL
+      SELECT ts, 'ark' AS kind, ticker,
+             ('ARK ' || fund || ' ' || direction) AS title,
+             ('shares ' || CAST(shares AS TEXT)) AS detail,
+             NULL AS link, 'ark-funds' AS source
+        FROM ark_trades WHERE ticker IN (${placeholders})
+      UNION ALL
+      SELECT fetched_at AS ts, 'edgar_alert' AS kind, ticker,
+             ('EDGAR: ' || phrase) AS title,
+             COALESCE(snippet, '') AS detail,
+             filing_url AS link, 'sec_edgar' AS source
+        FROM edgar_alerts WHERE ticker IN (${placeholders})
     )
     ORDER BY ts DESC
     LIMIT ?
-  `).all(...upper, ...upper, ...upper, ...upper, ...upper, limit) as ActivityEvent[];
+  `).all(...upper, ...upper, ...upper, ...upper, ...upper, ...upper, ...upper, ...upper, ...upper, limit) as ActivityEvent[];
   return rows;
 }
