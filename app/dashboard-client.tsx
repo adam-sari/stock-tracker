@@ -8,6 +8,7 @@ import { AddHoldingDrawer } from '@/components/AddHoldingDrawer';
 import { ProviderHealthBadge } from '@/components/ProviderHealthBadge';
 import { DashboardActivityFeed } from '@/components/DashboardActivityFeed';
 import { UpcomingEarnings } from '@/components/UpcomingEarnings';
+import { WatchlistPanel } from '@/components/WatchlistPanel';
 import type { PortfolioValue } from '@/lib/computations/portfolio';
 import type { Bar } from '@/lib/providers/types';
 
@@ -106,6 +107,8 @@ export function DashboardClient({ initialValue, initialTags }: Props) {
         <h2 className="text-sm uppercase text-muted mb-2">Holdings</h2>
         <HoldingsTable rows={value.rows} tagsByTicker={initialTags} />
       </section>
+
+      <WatchlistPanel />
 
       <section>
         <h2 className="text-sm uppercase text-muted mb-2">Activity on your holdings</h2>
