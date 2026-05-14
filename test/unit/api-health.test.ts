@@ -4,14 +4,15 @@ import path from 'node:path';
 import { closeDb, getDb } from '@/lib/db/connection';
 import { applySchema } from '@/lib/db/migrate';
 import { recordProviderSuccess } from '@/lib/db/queries/health';
-import { GET, _resetCache } from '@/app/api/health/route';
+import { GET } from '@/app/api/health/route';
+import { healthCache } from '@/lib/cache/health-cache';
 
 const TEST_DB_DIR = path.join(process.cwd(), '.vitest-cache', 'health-api-test');
 const TEST_DB_PATH = path.join(TEST_DB_DIR, 'test.db');
 
 describe('GET /api/health', () => {
   beforeEach(() => {
-    _resetCache();
+    healthCache.reset();
     closeDb();
     if (existsSync(TEST_DB_DIR)) rmSync(TEST_DB_DIR, { recursive: true, force: true });
     mkdirSync(TEST_DB_DIR, { recursive: true });

@@ -11,6 +11,12 @@ import { refreshCorporateActionsOnce } from '@/lib/jobs/refresh-corporate-action
 import { computeDiscoveryOnce } from '@/lib/jobs/compute-discovery';
 import { refreshWikiPageviewsOnce } from '@/lib/jobs/refresh-wiki-pageviews';
 import { refreshEdgarAlertsOnce } from '@/lib/jobs/refresh-edgar-alerts';
+import { refreshStockMetaOnce } from '@/lib/jobs/refresh-stock-meta';
+import { refreshDodContractsOnce } from '@/lib/jobs/refresh-dod-contracts';
+import { refreshFdaCalendarOnce } from '@/lib/jobs/refresh-fda-calendar';
+import { refreshArkTradesOnce } from '@/lib/jobs/refresh-ark-trades';
+import { refreshCabinetTradesOnce } from '@/lib/jobs/refresh-cabinet-trades';
+import { refreshHiringOnce } from '@/lib/jobs/refresh-hiring';
 import {
   quoteChain,
   finnhubClient,
@@ -47,6 +53,7 @@ export async function POST() {
   const results: JobResult[] = [];
 
   // Run jobs in a sensible order (meta first, then prices, then derived data)
+  results.push(await safeRun('refresh-stock-meta', () => refreshStockMetaOnce(fmpClient(), finnhubClient())));
   results.push(await safeRun('poll-quotes', () => pollQuotesOnce(quoteChain())));
   results.push(await safeRun('refresh-news', () => refreshNewsOnce(finnhubClient())));
   results.push(await safeRun('refresh-earnings', () => refreshEarningsOnce(finnhubClient())));
@@ -58,6 +65,11 @@ export async function POST() {
   results.push(await safeRun('refresh-corporate-actions', () => refreshCorporateActionsOnce(fmpClient(), yahooForActions)));
   results.push(await safeRun('refresh-wiki-pageviews', () => refreshWikiPageviewsOnce()));
   results.push(await safeRun('refresh-edgar-alerts', () => refreshEdgarAlertsOnce()));
+  results.push(await safeRun('refresh-dod-contracts', () => refreshDodContractsOnce()));
+  results.push(await safeRun('refresh-fda-calendar', () => refreshFdaCalendarOnce(finnhubClient())));
+  results.push(await safeRun('refresh-ark-trades', () => refreshArkTradesOnce()));
+  results.push(await safeRun('refresh-cabinet-trades', () => refreshCabinetTradesOnce()));
+  results.push(await safeRun('refresh-hiring', () => refreshHiringOnce()));
   results.push(await safeRun('compute-discovery', () => computeDiscoveryOnce()));
 
   const errors = results.filter(r => r.status === 'error');
