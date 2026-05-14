@@ -90,13 +90,18 @@ def scan_13f() -> dict[str, int]:
             filed_at = int(time.time())
         accession = filing.accession_no
 
-        # Aggregate shares by ticker (a fund may hold the same ticker in multiple share classes)
+        # Aggregate shares by ticker (a fund may hold the same ticker in multiple share classes).
+        # Column names per edgartools v5.31 infotable:
+        #   Ticker, Issuer, Class, Cusip, Value (USD), SharesPrnAmount, Type ("Shares"|"Principal")
         agg: dict[str, dict] = {}
         for _, row in df.iterrows():
             ticker = str(row.get("Ticker") or "").upper().strip()
             if not ticker:
                 continue
-            shares = _to_float(row.get("Shares")) or 0.0
+            # Skip non-equity holdings (Principal-amount entries are bonds/options notional)
+            if str(row.get("Type") or "").strip().lower() not in ("shares", ""):
+                continue
+            shares = _to_float(row.get("SharesPrnAmount")) or 0.0
             value_usd = _to_float(row.get("Value")) or 0.0
             if ticker not in agg:
                 agg[ticker] = {"shares": 0.0, "value_usd": 0.0}
