@@ -38,7 +38,8 @@ def test_scan_form4_with_no_filings_succeeds(applied_schema):
     fake_get_filings = MagicMock(return_value=[])
     fake_module = MagicMock(set_identity=fake_set_identity, get_filings=fake_get_filings)
 
-    with patch.dict("sys.modules", {"edgartools": fake_module}):
+    # PyPI package is `edgartools` but the import name is `edgar` — patch the import name
+    with patch.dict("sys.modules", {"edgar": fake_module}):
         from sidecar.jobs.scan_form4 import scan_form4
         result = scan_form4(days_back=1)
 

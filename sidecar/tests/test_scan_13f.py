@@ -44,7 +44,8 @@ def test_seed_funds_inserts_curated_roster(applied_schema):
 def test_scan_13f_with_empty_funds_runs_clean(applied_schema):
     fake_set_identity = MagicMock()
     fake_module = MagicMock(set_identity=fake_set_identity)
-    with patch.dict("sys.modules", {"edgartools": fake_module}):
+    # PyPI package is `edgartools` but the import name is `edgar` — patch the import name
+    with patch.dict("sys.modules", {"edgar": fake_module}):
         from sidecar.jobs.scan_13f import scan_13f
         result = scan_13f()
     assert result["funds"] == 0
