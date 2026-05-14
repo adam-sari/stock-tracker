@@ -1,6 +1,7 @@
 import type { MarketDataProvider, Quote, Bar, BarsOpts, ProviderHealth, Session } from './types';
 import { ProviderError } from './types';
 import { sessionFor } from './session';
+import { fetchWithTimeout, TIMEOUT_QUOTE_MS, TIMEOUT_BULK_MS } from './fetch-timeout';
 
 type YahooMeta = {
   symbol: string;
@@ -56,9 +57,9 @@ export class YahooProvider implements MarketDataProvider {
 
   async health(): Promise<ProviderHealth> {
     try {
-      const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=1d', {
+      const r = await fetchWithTimeout('https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=1d', {
         headers: { 'User-Agent': USER_AGENT },
-      });
+      }, TIMEOUT_QUOTE_MS);
       if (r.ok) return { status: 'ok' };
       if (r.status >= 500) return { status: 'degraded', message: `HTTP ${r.status}` };
       return { status: 'down', message: `HTTP ${r.status}` };
@@ -69,9 +70,10 @@ export class YahooProvider implements MarketDataProvider {
 
   private async fetchChart(ticker: string, params: Record<string, string>): Promise<YahooChartResponse['chart']['result'][0] | null> {
     const search = new URLSearchParams(params);
-    const r = await fetch(
+    const r = await fetchWithTimeout(
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker.toUpperCase())}?${search}`,
-      { headers: { 'User-Agent': USER_AGENT } }
+      { headers: { 'User-Agent': USER_AGENT } },
+      TIMEOUT_BULK_MS,
     );
     if (r.status === 404 || r.status === 422) return null;
     if (!r.ok) throw new ProviderError(this.name, `chart HTTP ${r.status}`);

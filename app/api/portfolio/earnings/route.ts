@@ -7,7 +7,8 @@ const _cache = new Map<number, { body: unknown; expiresAt: number }>();
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const daysAhead = Math.min(180, Math.max(1, Number(url.searchParams.get('days') ?? '30')));
+  const rawDays = Number(url.searchParams.get('days'));
+  const daysAhead = Math.min(180, Math.max(1, Number.isFinite(rawDays) && rawDays > 0 ? rawDays : 30));
   const now = Date.now();
   const cached = _cache.get(daysAhead);
   if (cached && now < cached.expiresAt) {

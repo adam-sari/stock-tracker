@@ -8,7 +8,8 @@ const _cache = new Map<number, { body: unknown; expiresAt: number }>();
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit') ?? '30')));
+  const rawLimit = Number(url.searchParams.get('limit'));
+  const limit = Math.min(200, Math.max(1, Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 30));
   const now = Date.now();
   const cached = _cache.get(limit);
   if (cached && now < cached.expiresAt) {

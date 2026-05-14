@@ -6,7 +6,10 @@ const _cache = new Map<string, { body: unknown; expiresAt: number }>();
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const limit = Math.min(200, Number(url.searchParams.get('limit') ?? '50'));
+  // Guard against NaN (Number('abc') === NaN, which propagates through Math.min
+  // and ends up as a NaN LIMIT in SQLite — silently returns 0 rows).
+  const rawLimit = Number(url.searchParams.get('limit'));
+  const limit = Math.min(200, Math.max(1, Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 50));
   const filter = url.searchParams.get('signals')?.split(',').filter(Boolean) ?? [];
   // Build a canonical cache key from sorted params
   const cacheKey = JSON.stringify({ limit, signals: [...filter].sort() });

@@ -27,7 +27,12 @@ export async function refreshStockMetaOnce(fmp: FmpClient, finnhub: FinnhubClien
         sector: fmpP?.sector ?? undefined,
         country: fmpP?.country ?? finP?.country ?? undefined,
         exchange: fmpP?.exchange ?? finP?.exchange ?? undefined,
-        market_cap: finP?.marketCapMillions ?? fmpP?.marketCap ?? undefined,
+        // Finnhub returns market cap in millions; FMP returns it in full dollars.
+        // Normalise to full dollars so AboutPanel formatting is consistent (was
+        // showing AAPL as $3M instead of $3T due to unit mismatch).
+        market_cap: (finP?.marketCapMillions != null
+          ? finP.marketCapMillions * 1_000_000
+          : fmpP?.marketCap) ?? undefined,
         ipo_date: fmpP?.ipoDate ?? finP?.ipo ?? undefined,
         weburl: fmpP?.website ?? finP?.webUrl ?? undefined,
         logo_url: finP?.logoUrl ?? undefined,

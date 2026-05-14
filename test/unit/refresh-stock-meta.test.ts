@@ -40,6 +40,8 @@ describe('refreshStockMetaOnce', () => {
     expect(m!.ceo).toBe('Tim Cook');
     expect(m!.industry).toBe('Consumer Electronics');
     expect(m!.logo_url).toContain('logo.png');
-    expect(m!.market_cap).toBe(4_329_000); // Finnhub returns millions; we store as-is, UI formats
+    // Finnhub returns market cap in millions; we normalise to full USD on ingest
+    // so display formatting is consistent across providers. 4_329 (millions) → 4.329T USD.
+    expect(m!.market_cap).toBe(4_329_000_000_000);
   });
 });

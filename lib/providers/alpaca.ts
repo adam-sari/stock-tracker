@@ -1,6 +1,7 @@
 import type { MarketDataProvider, Quote, Bar, BarsOpts, ProviderHealth } from './types';
 import { ProviderError } from './types';
 import { sessionFor } from './session';
+import { fetchWithTimeout, TIMEOUT_QUOTE_MS, TIMEOUT_BULK_MS } from './fetch-timeout';
 
 export type AlpacaConfig = {
   keyId: string;
@@ -26,7 +27,7 @@ export class AlpacaProvider implements MarketDataProvider {
 
   async health(): Promise<ProviderHealth> {
     try {
-      const r = await fetch(`${this.baseUrl}/account`, { headers: this.headers });
+      const r = await fetchWithTimeout(`${this.baseUrl}/account`, { headers: this.headers }, TIMEOUT_QUOTE_MS);
       if (r.status === 200) return { status: 'ok' };
       if (r.status === 401) return { status: 'down', message: 'auth failed' };
       return { status: 'degraded', message: `HTTP ${r.status}` };
@@ -41,7 +42,7 @@ export class AlpacaProvider implements MarketDataProvider {
     // feed can be stale (e.g. bid present but ask=0 in post-market), giving a wrong price.
     // The trade price is the actual most-recent printed trade on IEX.
     const upper = ticker.toUpperCase();
-    const r = await fetch(`${this.dataBaseUrl}/v2/stocks/snapshots?symbols=${upper}`, { headers: this.headers });
+    const r = await fetchWithTimeout(`${this.dataBaseUrl}/v2/stocks/snapshots?symbols=${upper}`, { headers: this.headers }, TIMEOUT_QUOTE_MS);
     if (r.status === 404) return null;
     if (!r.ok) throw new ProviderError(this.name, `snapshots HTTP ${r.status}`);
     const data = await r.json() as Record<string, {
@@ -104,7 +105,7 @@ export class AlpacaProvider implements MarketDataProvider {
       limit: '10000',
       adjustment: 'all',
     });
-    const r = await fetch(`${this.dataBaseUrl}/v2/stocks/${ticker.toUpperCase()}/bars?${params}`, { headers: this.headers });
+    const r = await fetchWithTimeout(`${this.dataBaseUrl}/v2/stocks/${ticker.toUpperCase()}/bars?${params}`, { headers: this.headers }, TIMEOUT_BULK_MS);
     if (r.status === 404) return [];
     if (!r.ok) throw new ProviderError(this.name, `bars HTTP ${r.status}`);
     const data = await r.json() as { bars?: Array<{ t: string; o: number; h: number; l: number; c: number; v: number }> };
@@ -128,7 +129,7 @@ export class AlpacaProvider implements MarketDataProvider {
       limit: '10000',
       adjustment: 'all',
     });
-    const r = await fetch(`${this.dataBaseUrl}/v2/stocks/${ticker.toUpperCase()}/bars?${params}`, { headers: this.headers });
+    const r = await fetchWithTimeout(`${this.dataBaseUrl}/v2/stocks/${ticker.toUpperCase()}/bars?${params}`, { headers: this.headers }, TIMEOUT_BULK_MS);
     if (r.status === 404) return [];
     if (!r.ok) throw new ProviderError(this.name, `daily bars HTTP ${r.status}`);
     const data = await r.json() as { bars?: Array<{ t: string; o: number; h: number; l: number; c: number; v: number }> };
