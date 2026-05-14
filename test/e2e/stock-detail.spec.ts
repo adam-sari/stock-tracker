@@ -1,14 +1,17 @@
 import { test, expect } from '@playwright/test';
 import { rmSync, existsSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import path from 'node:path';
 
 const TEST_DB = path.join(process.cwd(), '.vitest-cache', 'e2e-stocks.db');
 
 test.beforeAll(() => {
+  // See dashboard.spec.ts for rationale on re-applying schema after delete.
   ['', '-shm', '-wal'].forEach(suffix => {
     const p = `${TEST_DB}${suffix}`;
     if (existsSync(p)) rmSync(p);
   });
+  execSync('npm run db:init', { env: { ...process.env, DB_PATH: TEST_DB }, stdio: 'pipe' });
 });
 
 test('stock detail page renders header, chart, and tabs', async ({ page }) => {
