@@ -10,15 +10,24 @@ describe('AlpacaProvider', () => {
   const realFetch = globalThis.fetch;
   afterEach(() => { globalThis.fetch = realFetch; });
 
-  it('parses the latest quote response correctly', async () => {
-    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify(fixture('alpaca-quote-aapl.json')), { status: 200 })) as any;
+  it('parses snapshot response and prefers latestTrade price over quote midpoint', async () => {
+    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify(fixture('alpaca-snapshot-aapl.json')), { status: 200 })) as any;
     const p = new AlpacaProvider({ keyId: 'X', secret: 'Y', dataBaseUrl: 'https://data.alpaca.markets' });
     const q = await p.getLatestQuote('AAPL');
     expect(q).not.toBeNull();
     expect(q!.ticker).toBe('AAPL');
     expect(q!.bid).toBe(279.56);
     expect(q!.ask).toBe(294.39);
-    expect(q!.price).toBeCloseTo((279.56 + 294.39) / 2, 4);
+    // Crucially: price = latestTrade.p, NOT bid/ask midpoint (the bug we fixed)
+    expect(q!.price).toBe(294.38);
+  });
+
+  it('falls back to minuteBar.close when no trade present', async () => {
+    const noTradeFixture = { AAPL: { ...fixture('alpaca-snapshot-aapl.json').AAPL, latestTrade: undefined } };
+    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify(noTradeFixture), { status: 200 })) as any;
+    const p = new AlpacaProvider({ keyId: 'X', secret: 'Y', dataBaseUrl: 'https://data.alpaca.markets' });
+    const q = await p.getLatestQuote('AAPL');
+    expect(q!.price).toBe(294.30); // minuteBar.c
   });
 
   it('parses minute bars and tags sessions correctly', async () => {
