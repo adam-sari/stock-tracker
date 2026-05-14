@@ -1,30 +1,44 @@
-"""Weekly 13F-HR ingestion for curated funds.
+"""Weekly 13F-HR ingestion for curated funds via edgartools (import: `edgar`).
 
-For each curated fund, fetch the most recent 13F-HR filing, resolve CUSIPs
-to tickers via OpenFIGI, and upsert into fund_holdings with QoQ deltas.
+For each curated fund, fetch the most recent 13F-HR filing and upsert
+into fund_holdings. The library's ThirteenF.infotable DataFrame already
+has Ticker resolved per holding — no CUSIP→ticker lookup needed.
 
-NOTE on edgartools API: The plan assumes edgartools v5.31+ exposes
-`Company(cik).get_filings(form="13F-HR")`, `filings.latest()`, `filing.obj()`,
-`tf.holdings` (list of dicts with "cusip", "shares", "value" keys), and
-`tf.period_of_report`. If the real API differs, the production code will need
-adaptation. The smoke tests mock edgartools so they verify wiring/DB logic only.
+API verified against edgartools v5.31.x:
+- Company(cik) → Company object
+- co.get_filings(form="13F-HR") → list[Filing], filings[0] is most recent
+- filing.obj() → ThirteenF with .infotable (DataFrame), .report_period
+- infotable columns include: Issuer, Class, Cusip, Value, Shares, Type, Ticker, ...
 """
 from __future__ import annotations
 import logging
+import math
 import time
 from sqlalchemy import text
 from sidecar.db import get_session
-from sidecar.cusip import lookup_cusips
 
 logger = logging.getLogger(__name__)
+
+
+def _to_float(value) -> float | None:
+    if value is None:
+        return None
+    try:
+        v = float(value)
+        if math.isnan(v):
+            return None
+        return v
+    except (TypeError, ValueError):
+        return None
 
 
 def scan_13f() -> dict[str, int]:
     """Ingest the latest 13F-HR for each curated fund."""
     try:
-        from edgartools import set_identity, Company
+        # PyPI package is `edgartools`, import name is `edgar`
+        from edgar import set_identity, Company
     except ImportError as e:
-        logger.error("edgartools not available: %s", e)
+        logger.error("edgartools (import 'edgar') not available: %s", e)
         return {"funds": 0, "holdings": 0, "errors": 1}
 
     set_identity("Stock Tracker Personal exara.ai@gmail.com")
@@ -46,64 +60,73 @@ def scan_13f() -> dict[str, int]:
         try:
             co = Company(cik)
             filings = co.get_filings(form="13F-HR")
-            if not filings:
+            if not filings or len(filings) == 0:
                 continue
-            filing = filings.latest()
-            tf = filing.obj()  # ThirteenF object
-            holdings = tf.holdings  # list of holdings rows
+            filing = filings[0]  # most recent
+            tf = filing.obj()
         except Exception as e:
             logger.warning("13F fetch failed for %s (%s): %s", name, cik, e)
             errors += 1
             continue
 
-        # Collect CUSIPs and resolve in one batch
-        cusips = [str(h.get("cusip", "")).strip().upper() for h in holdings if h.get("cusip")]
-        cusip_to_ticker = lookup_cusips(cusips)
+        try:
+            df = tf.infotable
+            if df is None or len(df) == 0:
+                continue
+        except Exception as e:
+            logger.warning("13F infotable read failed for %s: %s", name, e)
+            errors += 1
+            continue
 
-        period_end = str(getattr(tf, "period_of_report", filing.filing_date))[:10]
-        filed_at = int(time.mktime(filing.filing_date.timetuple()))
+        # Period end: prefer report_period if available, fall back to filing date
+        try:
+            period_end = str(tf.report_period)[:10] if hasattr(tf, "report_period") and tf.report_period else str(filing.filing_date)[:10]
+        except Exception:
+            period_end = str(filing.filing_date)[:10]
+
+        try:
+            filed_at = int(time.mktime(filing.filing_date.timetuple()))
+        except Exception:
+            filed_at = int(time.time())
         accession = filing.accession_no
 
-        # Look up previous filing for delta computation
-        prev_holdings: dict[str, float] = {}
-        try:
-            if len(filings) > 1:
-                prev_filing = filings[1]
-                prev_tf = prev_filing.obj()
-                for h in prev_tf.holdings:
-                    cusip_p = str(h.get("cusip", "")).strip().upper()
-                    if cusip_p:
-                        prev_holdings[cusip_p] = float(h.get("shares", 0) or 0)
-        except Exception:
-            pass
+        # Aggregate shares by ticker (a fund may hold the same ticker in multiple share classes)
+        agg: dict[str, dict] = {}
+        for _, row in df.iterrows():
+            ticker = str(row.get("Ticker") or "").upper().strip()
+            if not ticker:
+                continue
+            shares = _to_float(row.get("Shares")) or 0.0
+            value_usd = _to_float(row.get("Value")) or 0.0
+            if ticker not in agg:
+                agg[ticker] = {"shares": 0.0, "value_usd": 0.0}
+            agg[ticker]["shares"] += shares
+            agg[ticker]["value_usd"] += value_usd
 
         with get_session() as session:
-            for h in holdings:
-                cusip = str(h.get("cusip", "")).strip().upper()
-                ticker = cusip_to_ticker.get(cusip)
-                if not ticker:
-                    continue
-                shares = float(h.get("shares", 0) or 0)
-                value_usd = float(h.get("value", 0) or 0)  # value reported in thousands per SEC
-                prev_shares = prev_holdings.get(cusip, 0)
-                delta_shares = shares - prev_shares
-                delta_pct = (delta_shares / prev_shares * 100) if prev_shares else None
-
-                session.execute(
-                    text(
-                        "INSERT INTO fund_holdings (filing_accession, cik, ticker, shares, value_usd, period_end, filed_at, delta_shares, delta_pct) "
-                        "VALUES (:acc, :cik, :ticker, :shares, :value, :period, :filed, :ds, :dp) "
-                        "ON CONFLICT(filing_accession, ticker) DO UPDATE SET shares=excluded.shares, value_usd=excluded.value_usd, delta_shares=excluded.delta_shares, delta_pct=excluded.delta_pct"
-                    ),
-                    {
-                        "acc": accession, "cik": cik, "ticker": ticker,
-                        "shares": shares, "value": value_usd, "period": period_end, "filed": filed_at,
-                        "ds": delta_shares, "dp": delta_pct,
-                    },
-                )
-                total_holdings += 1
+            for ticker, totals in agg.items():
+                try:
+                    session.execute(
+                        text(
+                            "INSERT INTO fund_holdings (filing_accession, cik, ticker, shares, value_usd, period_end, filed_at) "
+                            "VALUES (:acc, :cik, :ticker, :shares, :value, :period, :filed) "
+                            "ON CONFLICT(filing_accession, ticker) DO UPDATE SET "
+                            "  shares=excluded.shares, value_usd=excluded.value_usd, period_end=excluded.period_end, filed_at=excluded.filed_at"
+                        ),
+                        {
+                            "acc": accession, "cik": cik, "ticker": ticker,
+                            "shares": totals["shares"], "value": totals["value_usd"],
+                            "period": period_end, "filed": filed_at,
+                        },
+                    )
+                    total_holdings += 1
+                except Exception as e:
+                    logger.warning("13F insert failed for %s/%s: %s", name, ticker, e)
+                    errors += 1
             session.commit()
+
         total_funds += 1
+        logger.info("13F: %s (%s) → %d holdings", name, cik, len(agg))
 
     with get_session() as session:
         session.execute(
@@ -112,4 +135,5 @@ def scan_13f() -> dict[str, int]:
         )
         session.commit()
 
+    logger.info("scan_13f: funds=%d holdings=%d errors=%d", total_funds, total_holdings, errors)
     return {"funds": total_funds, "holdings": total_holdings, "errors": errors}

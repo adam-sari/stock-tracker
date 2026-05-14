@@ -1,19 +1,18 @@
-"""Daily Form 4 ingestion via edgartools.
+"""Daily Form 4 ingestion via edgartools (import name: `edgar`).
 
 Pulls all Form 4 filings from the past N days and upserts them as
 insider transactions. Plan 2 scans the entire universe — we filter to
 held tickers at read time.
 
-NOTE on edgartools API: The plan assumes edgartools v5.31+ exposes
-`set_identity`, `get_filings`, `filing.obj()`, `form4.non_derivative_transactions`,
-and `form4.derivative_transactions`. If the real API differs (e.g. attribute
-names like `transactions` vs `non_derivative_transactions`), the production
-code will need adaptation. The smoke tests mock edgartools so they verify
-wiring/DB logic only, not the real API surface.
+API verified against edgartools v5.31.x:
+- get_filings(form="4", filing_date="YYYY-MM-DD:YYYY-MM-DD") → list[Filing]
+- filing.obj() → Form4 with .issuer (Issuer w/ ticker), .insider_name, .to_dataframe()
+- to_dataframe() columns: Transaction Type, Code, Description, Shares, Price, Value, Date, Form, Issuer, Ticker, Insider, Position, Remaining Shares
 """
 from __future__ import annotations
 import hashlib
 import logging
+import math
 import time
 from datetime import date, timedelta
 from sqlalchemy import text
@@ -26,26 +25,38 @@ def _row_id(accession: str, line_no: int) -> str:
     return hashlib.sha256(f"{accession}|{line_no}".encode()).hexdigest()
 
 
+def _to_float(value) -> float | None:
+    """Convert a possibly-NaN pandas value to float or None."""
+    if value is None:
+        return None
+    try:
+        v = float(value)
+        if math.isnan(v):
+            return None
+        return v
+    except (TypeError, ValueError):
+        return None
+
+
 def scan_form4(days_back: int = 1) -> dict[str, int]:
     """Scan EDGAR Form 4 filings from `days_back` ago to today.
 
     Returns {inserted, skipped, errors}.
     """
     try:
-        from edgartools import set_identity, get_filings
+        # PyPI package is `edgartools`, import name is `edgar`
+        from edgar import set_identity, get_filings
     except ImportError as e:
-        logger.error("edgartools not installed: %s", e)
+        logger.error("edgartools (import 'edgar') not installed: %s", e)
         return {"inserted": 0, "skipped": 0, "errors": 1}
 
     set_identity("Stock Tracker Personal exara.ai@gmail.com")
 
     end = date.today()
     start = end - timedelta(days=days_back)
-    start_str = start.isoformat()
-    end_str = end.isoformat()
 
     try:
-        filings = get_filings(form="4", filing_date=f"{start_str}:{end_str}")
+        filings = get_filings(form="4", filing_date=f"{start.isoformat()}:{end.isoformat()}")
     except Exception as e:
         logger.exception("Failed to fetch Form 4 filings: %s", e)
         return {"inserted": 0, "skipped": 0, "errors": 1}
@@ -62,89 +73,88 @@ def scan_form4(days_back: int = 1) -> dict[str, int]:
         ).first()[0]
         session.commit()
 
+    n_filings = len(filings)
+    logger.info("scan_form4: processing %d Form 4 filings from %s to %s", n_filings, start, end)
+
     with get_session() as session:
-        for filing in filings:
+        for filing_idx, filing in enumerate(filings):
+            if filing_idx % 200 == 0 and filing_idx > 0:
+                logger.info("  ...processed %d/%d filings", filing_idx, n_filings)
+                session.commit()  # batch-commit every 200 filings
+
             try:
                 form4 = filing.obj()
             except Exception:
                 errors += 1
                 continue
 
-            ticker = (filing.ticker or "").upper()
-            if not ticker:
+            # Default ticker from issuer; per-row Ticker overrides if present
+            default_ticker = ""
+            try:
+                if form4.issuer and form4.issuer.ticker:
+                    default_ticker = str(form4.issuer.ticker).upper()
+            except Exception:
+                pass
+
+            insider_name = str(getattr(form4, "insider_name", "") or "")
+            accession = filing.accession_no
+
+            try:
+                filed_at = int(time.mktime(filing.filing_date.timetuple()))
+            except Exception:
+                filed_at = int(time.time())
+            filing_url = getattr(filing, "filing_url", None) or getattr(filing, "url", "")
+
+            try:
+                df = form4.to_dataframe()
+            except Exception:
+                errors += 1
+                continue
+            if df is None or len(df) == 0:
                 skipped += 1
                 continue
 
-            insider_name = getattr(form4, "reporter", None) or getattr(form4, "owner", "") or ""
-            accession = filing.accession_no
-            filed_at = int(time.mktime(filing.filing_date.timetuple()))
-            filing_url = filing.url
-
-            # Non-derivative table = open-market transactions
-            try:
-                nondrv = form4.non_derivative_transactions  # list of dicts
-            except Exception:
-                nondrv = []
-
-            for i, row in enumerate(nondrv or []):
-                code = str(row.get("transactionCode", "")).strip()
-                if not code:
-                    continue
-                shares = float(row.get("transactionShares", 0) or 0)
-                price = row.get("transactionPricePerShare")
-                price = float(price) if price is not None else None
-                value = (shares * price) if price else None
-                txn_date = str(row.get("transactionDate", ""))[:10]
-
-                rid = _row_id(accession, i)
+            for i, row in df.iterrows():
                 try:
+                    ticker = str(row.get("Ticker") or default_ticker or "").upper().strip()
+                    if not ticker:
+                        continue
+                    code = str(row.get("Code", "") or "").strip()
+                    if not code:
+                        continue
+                    shares = _to_float(row.get("Shares")) or 0.0
+                    price = _to_float(row.get("Price"))
+                    value = _to_float(row.get("Value"))
+                    if value is None and price is not None:
+                        value = shares * price
+
+                    txn_date_raw = row.get("Date")
+                    if hasattr(txn_date_raw, "strftime"):
+                        txn_date = txn_date_raw.strftime("%Y-%m-%d")
+                    else:
+                        txn_date = str(txn_date_raw)[:10] if txn_date_raw else ""
+                    if not txn_date:
+                        continue
+
+                    role = str(row.get("Position", "") or "")[:100] or None
+
+                    rid = _row_id(accession, i)
                     session.execute(
                         text(
-                            "INSERT INTO insider_txns (id, ticker, insider_name, code, is_derivative, shares, price, value, txn_date, filed_at, filing_url, source) "
-                            "VALUES (:id, :ticker, :name, :code, 0, :shares, :price, :value, :txn_date, :filed_at, :url, 'edgar') "
+                            "INSERT INTO insider_txns (id, ticker, insider_name, insider_role, code, is_derivative, shares, price, value, txn_date, filed_at, filing_url, source) "
+                            "VALUES (:id, :ticker, :name, :role, :code, 0, :shares, :price, :value, :txn_date, :filed_at, :url, 'edgar') "
                             "ON CONFLICT(id) DO NOTHING"
                         ),
                         {
-                            "id": rid, "ticker": ticker, "name": str(insider_name),
+                            "id": rid, "ticker": ticker, "name": insider_name, "role": role,
                             "code": code, "shares": shares, "price": price, "value": value,
                             "txn_date": txn_date, "filed_at": filed_at, "url": filing_url,
                         },
                     )
                     inserted += 1
                 except Exception as e:
-                    logger.warning("Insert failed for %s line %d: %s", accession, i, e)
+                    logger.warning("Insert failed for %s row %s: %s", accession, i, e)
                     errors += 1
-
-            # Derivative transactions (option grants, exercises) tracked separately
-            try:
-                drv = form4.derivative_transactions
-            except Exception:
-                drv = []
-
-            for i, row in enumerate(drv or []):
-                code = str(row.get("transactionCode", "")).strip()
-                if not code:
-                    continue
-                shares = float(row.get("transactionShares", 0) or 0)
-                txn_date = str(row.get("transactionDate", ""))[:10]
-                rid = _row_id(accession, 1000 + i)  # offset to avoid collisions
-                try:
-                    session.execute(
-                        text(
-                            "INSERT INTO insider_txns (id, ticker, insider_name, code, is_derivative, shares, price, value, txn_date, filed_at, filing_url, source) "
-                            "VALUES (:id, :ticker, :name, :code, 1, :shares, NULL, NULL, :txn_date, :filed_at, :url, 'edgar') "
-                            "ON CONFLICT(id) DO NOTHING"
-                        ),
-                        {
-                            "id": rid, "ticker": ticker, "name": str(insider_name),
-                            "code": code, "shares": shares, "txn_date": txn_date,
-                            "filed_at": filed_at, "url": filing_url,
-                        },
-                    )
-                    inserted += 1
-                except Exception:
-                    errors += 1
-
         session.commit()
 
     with get_session() as session:
