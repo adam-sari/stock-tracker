@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
 import type { SignalKind } from '@/lib/computations/discovery';
-import { scoreVolumeBreakout, scoreInsiderClusters } from '@/lib/computations/discovery';
-import { readCandlesAsOf, readInsiderAsOf, asOfEpoch } from './asof-readers';
+import { scoreVolumeBreakout, scoreInsiderClusters, scoreCongressBuys } from '@/lib/computations/discovery';
+import { readCandlesAsOf, readInsiderAsOf, readCongressAsOf, asOfEpoch } from './asof-readers';
 
 export type ReplayOpts = {
   fromDate: string;        // YYYY-MM-DD inclusive
@@ -87,6 +87,35 @@ export function replayInsider(
       const scores = scoreInsiderClusters(rows, asOfEpoch(asOf), lookback);
       for (const [ticker, e] of scores) {
         upsert.run(asOf, ticker, e.score, JSON.stringify({ distinctBuyers: e.distinctBuyers }));
+        written++;
+      }
+    }
+  });
+  tx();
+  return written;
+}
+
+export function replayCongress(
+  db: Database.Database,
+  opts: { fromDate: string; toDate: string; lookbackDays?: number; tickers?: string[] },
+): number {
+  const lookback = opts.lookbackDays ?? 14;
+  const upsert = db.prepare(
+    `INSERT INTO backtest_scores (date, ticker, signal_kind, score, detail_json)
+     VALUES (?, ?, 'congress', ?, ?)
+     ON CONFLICT(date, ticker, signal_kind) DO UPDATE SET
+       score = excluded.score, detail_json = excluded.detail_json`
+  );
+  let written = 0;
+  const tx = db.transaction(() => {
+    for (let d = new Date(`${opts.fromDate}T00:00:00Z`);
+         d.toISOString().slice(0, 10) <= opts.toDate;
+         d.setUTCDate(d.getUTCDate() + 1)) {
+      const asOf = d.toISOString().slice(0, 10);
+      const rows = readCongressAsOf(db, asOf, lookback, opts.tickers);
+      const scores = scoreCongressBuys(rows, asOfEpoch(asOf), lookback);
+      for (const [ticker, e] of scores) {
+        upsert.run(asOf, ticker, e.score, JSON.stringify({ buys: e.buys, sales: e.sales }));
         written++;
       }
     }

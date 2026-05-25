@@ -67,3 +67,26 @@ export function readInsiderAsOf(
      FROM insider_txns WHERE filed_at >= ? AND filed_at <= ?`
   ).all(lower, upper) as InsiderRow[];
 }
+
+export type CongressAsOfRow = { ticker: string; member: string; kind: string; disclosed_at: number };
+
+export function readCongressAsOf(
+  db: Database.Database,
+  asOfDate: string,
+  lookbackDays: number,
+  tickers?: string[],
+): CongressAsOfRow[] {
+  const upper = asOfEpoch(asOfDate);
+  const lower = lookbackEpoch(asOfDate, lookbackDays);
+  if (tickers && tickers.length > 0) {
+    const placeholders = tickers.map(() => '?').join(',');
+    return db.prepare(
+      `SELECT ticker, member, kind, disclosed_at FROM congress_trades
+       WHERE disclosed_at >= ? AND disclosed_at <= ? AND ticker IN (${placeholders})`
+    ).all(lower, upper, ...tickers) as CongressAsOfRow[];
+  }
+  return db.prepare(
+    `SELECT ticker, member, kind, disclosed_at FROM congress_trades
+     WHERE disclosed_at >= ? AND disclosed_at <= ?`
+  ).all(lower, upper) as CongressAsOfRow[];
+}
