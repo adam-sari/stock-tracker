@@ -391,3 +391,40 @@ CREATE TABLE IF NOT EXISTS hiring_snapshots (
 CREATE INDEX IF NOT EXISTS ix_hiring_snapshots_ticker_ts ON hiring_snapshots (ticker, ts DESC);
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (11);
+
+-- Plan 13 (backtest infrastructure) — 2026-05-25
+
+CREATE TABLE IF NOT EXISTS sp500_membership (
+  ticker TEXT NOT NULL,
+  from_date TEXT NOT NULL,
+  to_date TEXT,
+  PRIMARY KEY (ticker, from_date)
+);
+CREATE INDEX IF NOT EXISTS ix_sp500_membership_dates
+  ON sp500_membership(from_date, to_date);
+
+CREATE TABLE IF NOT EXISTS backtest_scores (
+  date TEXT NOT NULL,
+  ticker TEXT NOT NULL,
+  signal_kind TEXT NOT NULL,
+  score REAL NOT NULL,
+  detail_json TEXT,
+  PRIMARY KEY (date, ticker, signal_kind)
+);
+CREATE INDEX IF NOT EXISTS ix_backtest_scores_date_kind
+  ON backtest_scores(date, signal_kind);
+CREATE INDEX IF NOT EXISTS ix_backtest_scores_ticker
+  ON backtest_scores(ticker);
+
+CREATE TABLE IF NOT EXISTS backtest_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  started_at INTEGER NOT NULL,
+  finished_at INTEGER,
+  status TEXT NOT NULL,
+  from_date TEXT NOT NULL,
+  to_date TEXT NOT NULL,
+  scoring_git_sha TEXT NOT NULL,
+  detail TEXT
+);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (12);
