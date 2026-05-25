@@ -112,3 +112,26 @@ export function readFundsAsOf(
      WHERE filed_at <= ?`
   ).all(upper) as FundAsOfRow[];
 }
+
+export type HaltAsOfRow = { ticker: string; reason_code: string | null; fetched_at: number };
+
+export function readHaltsAsOf(
+  db: Database.Database,
+  asOfDate: string,
+  lookbackDays: number,
+  tickers?: string[],
+): HaltAsOfRow[] {
+  const upper = asOfEpoch(asOfDate);
+  const lower = lookbackEpoch(asOfDate, lookbackDays);
+  if (tickers && tickers.length > 0) {
+    const placeholders = tickers.map(() => '?').join(',');
+    return db.prepare(
+      `SELECT ticker, reason_code, fetched_at FROM trading_halts
+       WHERE fetched_at >= ? AND fetched_at <= ? AND ticker IN (${placeholders})`
+    ).all(lower, upper, ...tickers) as HaltAsOfRow[];
+  }
+  return db.prepare(
+    `SELECT ticker, reason_code, fetched_at FROM trading_halts
+     WHERE fetched_at >= ? AND fetched_at <= ?`
+  ).all(lower, upper) as HaltAsOfRow[];
+}
