@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { execSync } from 'node:child_process';
 import type { SignalKind } from '@/lib/computations/discovery';
 import { scoreVolumeBreakout, scoreInsiderClusters, scoreCongressBuys, score13FAccumulation, scoreHaltEvents, scoreSentimentSurge } from '@/lib/computations/discovery';
 import { readCandlesAsOf, readInsiderAsOf, readCongressAsOf, readFundsAsOf, readHaltsAsOf, readSentimentAsOf, asOfEpoch } from './asof-readers';
@@ -27,8 +28,46 @@ export async function replayAllSignals(
   db: Database.Database,
   opts: ReplayOpts,
 ): Promise<ReplayResult> {
-  // Per-signal calls are wired in their own tasks.
-  throw new Error('not implemented yet — per-signal calls wired in tasks 4-9');
+  const sha = (() => {
+    try { return execSync('git rev-parse --short HEAD').toString().trim(); }
+    catch { return 'unknown'; }
+  })();
+  const started = Math.floor(Date.now() / 1000);
+  const ins = db.prepare(
+    `INSERT INTO backtest_runs (started_at, status, from_date, to_date, scoring_git_sha)
+     VALUES (?, 'running', ?, ?, ?)`
+  ).run(started, opts.fromDate, opts.toDate, sha);
+  const runId = Number(ins.lastInsertRowid);
+
+  const all: Array<'insider' | 'congress' | 'funds' | 'halts' | 'volume' | 'sentiment'> =
+    ['insider', 'congress', 'funds', 'halts', 'volume', 'sentiment'];
+  const signals = (opts.signals as typeof all) ?? all;
+  const perSignal: Record<string, number> = {};
+  let total = 0;
+  let error: string | null = null;
+
+  try {
+    for (const sig of signals) {
+      let n = 0;
+      switch (sig) {
+        case 'insider':   n = replayInsider(db, { ...opts, lookbackDays: 30 }); break;
+        case 'congress':  n = replayCongress(db, { ...opts, lookbackDays: 14 }); break;
+        case 'funds':     n = replayFunds(db, opts); break;
+        case 'halts':     n = replayHalts(db, { ...opts, lookbackDays: 3 }); break;
+        case 'volume':    n = replayVolume(db, { ...opts, lookbackDays: 30 }); break;
+        case 'sentiment': n = replaySentiment(db, { ...opts, lookbackHours: 48 }); break;
+      }
+      perSignal[sig] = n;
+      total += n;
+    }
+  } catch (e) { error = (e as Error).message; }
+
+  db.prepare(
+    `UPDATE backtest_runs SET finished_at = ?, status = ?, detail = ? WHERE id = ?`
+  ).run(Math.floor(Date.now() / 1000), error ? 'error' : 'ok',
+        error ?? `scored=${total}`, runId);
+
+  return { runId, scoresWritten: total, perSignal };
 }
 
 /**
