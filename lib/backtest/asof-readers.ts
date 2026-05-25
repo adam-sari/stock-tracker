@@ -38,3 +38,32 @@ export function readCandlesAsOf(
      WHERE date >= ? AND date <= ?`
   ).all(fromDate, asOfDate) as CandleRow[];
 }
+
+export type InsiderRow = {
+  ticker: string;
+  insider_name: string;
+  code: string;
+  is_derivative: number;
+  filed_at: number;
+};
+
+export function readInsiderAsOf(
+  db: Database.Database,
+  asOfDate: string,
+  lookbackDays: number,
+  tickers?: string[],
+): InsiderRow[] {
+  const upper = asOfEpoch(asOfDate);
+  const lower = lookbackEpoch(asOfDate, lookbackDays);
+  if (tickers && tickers.length > 0) {
+    const placeholders = tickers.map(() => '?').join(',');
+    return db.prepare(
+      `SELECT ticker, insider_name, code, is_derivative, filed_at
+       FROM insider_txns WHERE filed_at >= ? AND filed_at <= ? AND ticker IN (${placeholders})`
+    ).all(lower, upper, ...tickers) as InsiderRow[];
+  }
+  return db.prepare(
+    `SELECT ticker, insider_name, code, is_derivative, filed_at
+     FROM insider_txns WHERE filed_at >= ? AND filed_at <= ?`
+  ).all(lower, upper) as InsiderRow[];
+}
