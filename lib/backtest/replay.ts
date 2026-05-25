@@ -1,5 +1,7 @@
 import type Database from 'better-sqlite3';
 import type { SignalKind } from '@/lib/computations/discovery';
+import { scoreVolumeBreakout } from '@/lib/computations/discovery';
+import { readCandlesAsOf } from './asof-readers';
 
 export type ReplayOpts = {
   fromDate: string;        // YYYY-MM-DD inclusive
@@ -27,4 +29,39 @@ export async function replayAllSignals(
 ): Promise<ReplayResult> {
   // Per-signal calls are wired in their own tasks.
   throw new Error('not implemented yet — per-signal calls wired in tasks 4-9');
+}
+
+/**
+ * Replay scoreVolumeBreakout over a date range.
+ * For each date in [fromDate, toDate], call the production scoring function
+ * with only candles dated <= that date. Write to backtest_scores.
+ */
+export function replayVolume(
+  db: Database.Database,
+  opts: { fromDate: string; toDate: string; lookbackDays?: number; tickers?: string[] },
+): number {
+  const lookback = opts.lookbackDays ?? 30;
+  const upsert = db.prepare(
+    `INSERT INTO backtest_scores (date, ticker, signal_kind, score, detail_json)
+     VALUES (?, ?, 'volume', ?, ?)
+     ON CONFLICT(date, ticker, signal_kind) DO UPDATE SET
+       score = excluded.score, detail_json = excluded.detail_json`
+  );
+  let written = 0;
+  const tx = db.transaction(() => {
+    for (let d = new Date(`${opts.fromDate}T00:00:00Z`);
+         d.toISOString().slice(0, 10) <= opts.toDate;
+         d.setUTCDate(d.getUTCDate() + 1)) {
+      const asOf = d.toISOString().slice(0, 10);
+      const rows = readCandlesAsOf(db, asOf, lookback, opts.tickers);
+      const scores = scoreVolumeBreakout(rows, lookback);
+      for (const [ticker, e] of scores) {
+        upsert.run(asOf, ticker, e.score,
+          JSON.stringify({ latestVolume: e.latestVolume, avgPriorVolume: e.avgPriorVolume }));
+        written++;
+      }
+    }
+  });
+  tx();
+  return written;
 }
