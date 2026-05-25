@@ -125,12 +125,14 @@ cd sidecar && uv sync && cd ..
 
 # 2. Configure environment
 cp .env.local.example .env.local
-# Fill in: ALPACA_KEY_ID, ALPACA_SECRET_KEY, FINNHUB_API_KEY, FMP_API_KEY
+# Fill in: ALPACA_KEY_ID, ALPACA_SECRET_KEY, FINNHUB_API_KEY, FMP_API_KEY,
+#          EDGAR_CONTACT_EMAIL (required by SEC EDGAR fair-access policy)
 #
 # Sources:
 #   Alpaca:  https://alpaca.markets → Paper Trading → View API keys
 #   Finnhub: https://finnhub.io → Get free API key
 #   FMP:     https://financialmodelingprep.com → Free tier
+#   EDGAR:   any real email you own — SEC requires a contact in the User-Agent
 
 # 3. Initialize the database (idempotent)
 npm run db:init
@@ -172,4 +174,4 @@ npm run start:all
 
 ## License
 
-Personal use; no public license.
+[MIT](./LICENSE).

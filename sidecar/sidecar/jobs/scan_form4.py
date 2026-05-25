@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import math
+import os
 import time
 from datetime import date, timedelta
 from sqlalchemy import text
@@ -50,7 +51,12 @@ def scan_form4(days_back: int = 1) -> dict[str, int]:
         logger.error("edgartools (import 'edgar') not installed: %s", e)
         return {"inserted": 0, "skipped": 0, "errors": 1}
 
-    set_identity("Stock Tracker Personal exara.ai@gmail.com")
+    # SEC EDGAR requires a real contact email in the User-Agent.
+    contact = os.environ.get("EDGAR_CONTACT_EMAIL")
+    if not contact:
+        logger.error("EDGAR_CONTACT_EMAIL not set — required by SEC EDGAR fair-access policy")
+        return {"inserted": 0, "skipped": 0, "errors": 1}
+    set_identity(f"Stock Tracker {contact}")
 
     end = date.today()
     start = end - timedelta(days=days_back)

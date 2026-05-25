@@ -18,6 +18,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 def applied_schema(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     monkeypatch.setenv("DB_PATH", str(db_path))
+    monkeypatch.setenv("EDGAR_CONTACT_EMAIL", "test@example.com")
     node_bin = str(PROJECT_ROOT / "node_modules" / ".bin")
     subprocess.run(
         ["npx", "tsx", "lib/db/migrate.ts"],

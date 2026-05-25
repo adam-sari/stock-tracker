@@ -13,6 +13,7 @@ API verified against edgartools v5.31.x:
 from __future__ import annotations
 import logging
 import math
+import os
 import time
 from sqlalchemy import text
 from sidecar.db import get_session
@@ -41,7 +42,12 @@ def scan_13f() -> dict[str, int]:
         logger.error("edgartools (import 'edgar') not available: %s", e)
         return {"funds": 0, "holdings": 0, "errors": 1}
 
-    set_identity("Stock Tracker Personal exara.ai@gmail.com")
+    # SEC EDGAR requires a real contact email in the User-Agent.
+    contact = os.environ.get("EDGAR_CONTACT_EMAIL")
+    if not contact:
+        logger.error("EDGAR_CONTACT_EMAIL not set — required by SEC EDGAR fair-access policy")
+        return {"funds": 0, "holdings": 0, "errors": 1}
+    set_identity(f"Stock Tracker {contact}")
 
     job_started = int(time.time())
     with get_session() as session:
