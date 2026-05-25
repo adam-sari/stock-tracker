@@ -90,3 +90,25 @@ export function readCongressAsOf(
      WHERE disclosed_at >= ? AND disclosed_at <= ?`
   ).all(lower, upper) as CongressAsOfRow[];
 }
+
+export type FundAsOfRow = { ticker: string; cik: string; period_end: string; delta_shares: number | null };
+
+/** Read fund_holdings rows whose filed_at <= as-of cutoff. */
+export function readFundsAsOf(
+  db: Database.Database,
+  asOfDate: string,
+  tickers?: string[],
+): FundAsOfRow[] {
+  const upper = asOfEpoch(asOfDate);
+  if (tickers && tickers.length > 0) {
+    const placeholders = tickers.map(() => '?').join(',');
+    return db.prepare(
+      `SELECT ticker, cik, period_end, delta_shares FROM fund_holdings
+       WHERE filed_at <= ? AND ticker IN (${placeholders})`
+    ).all(upper, ...tickers) as FundAsOfRow[];
+  }
+  return db.prepare(
+    `SELECT ticker, cik, period_end, delta_shares FROM fund_holdings
+     WHERE filed_at <= ?`
+  ).all(upper) as FundAsOfRow[];
+}
