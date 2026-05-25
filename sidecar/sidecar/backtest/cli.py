@@ -17,12 +17,17 @@ logger = logging.getLogger(__name__)
 HORIZONS = [1, 5, 21, 63]
 EVENT_STUDY_KINDS = {"halts", "insider"}
 
+# project_root/out/backtest — independent of CWD so the report always lands
+# in a predictable place whether you invoke from project root or from sidecar/.
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_OUT_ROOT = PROJECT_ROOT / "out" / "backtest"
+
 
 def main() -> int:
     ap = argparse.ArgumentParser(prog="sidecar.backtest")
     ap.add_argument("--from", dest="from_date", required=True)
     ap.add_argument("--to", dest="to_date", required=True)
-    ap.add_argument("--out", dest="out_root", default="out/backtest")
+    ap.add_argument("--out", dest="out_root", default=str(DEFAULT_OUT_ROOT))
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
