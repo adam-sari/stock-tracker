@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Discovery Backtest Report — {{ run.from_date }} to {{ run.to_date }}</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  h1 { margin-bottom: 0.2rem; } h2 { margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  table { border-collapse: collapse; margin: 0.5rem 0; }
+  th, td { padding: 4px 10px; border: 1px solid #ddd; text-align: right; font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  .signif { background: #d6e9c6; } .suggest { background: #fcf8e3; }
+  .meta { color: #666; font-size: 0.9rem; }
+  img { max-width: 100%; height: auto; margin: 1rem 0; }
+  .note { color: #999; font-style: italic; }
+</style></head><body>
+<h1>Discovery Backtest Report</h1>
+<p class="meta">
+  Window: {{ run.from_date }} → {{ run.to_date }}<br>
+  Scoring commit: <code>{{ run.scoring_git_sha }}</code><br>
+  Generated: {{ generated_at }}<br>
+  Universe size: {{ run.n_assets }} assets &middot; {{ run.n_dates }} dates
+</p>
+
+<h2>Headline composite</h2>
+<table>
+  <tr><th>Horizon</th>{% for h in horizons %}<th>{{ h }}D</th>{% endfor %}</tr>
+  <tr><td>Rank IC mean</td>{% for h in horizons %}<td>{{ '%.4f' % composite_ic[h].mean }}</td>{% endfor %}</tr>
+  <tr><td>IC t-stat (NW)</td>{% for h in horizons %}<td class="{{ 'signif' if composite_ic[h].t_stat|abs > 3 else 'suggest' if composite_ic[h].t_stat|abs > 2 else '' }}">{{ '%.2f' % composite_ic[h].t_stat }}</td>{% endfor %}</tr>
+  <tr><td>N obs</td>{% for h in horizons %}<td>{{ composite_ic[h].n }}</td>{% endfor %}</tr>
+</table>
+<p class="note">t-stat &gt; 3.0 = significant after multiple-testing (Harvey-Liu-Zhu hurdle). 2.0–3.0 = suggestive.</p>
+
+{% for sig in per_signal %}
+<h2>{{ sig.kind|title }} — {{ sig.n_obs }} obs ({{ sig.date_range[0] }} → {{ sig.date_range[1] }})</h2>
+{% if sig.kind in event_study_kinds %}
+  <p>Event study (rare signal). Mean cumulative abnormal return by day relative to event:</p>
+  {% if sig.car_plot_b64 %}
+    <img src="data:image/png;base64,{{ sig.car_plot_b64 }}" alt="CAR plot for {{ sig.kind }}">
+  {% endif %}
+  <table>
+    <tr><th>Offset (days)</th><th>Mean CAR</th><th>N events</th></tr>
+    {% for offset, row in sig.car.items() %}
+    <tr><td>{{ offset }}</td><td>{{ '%.4f' % row.mean if row.mean is not none else 'n/a' }}</td><td>{{ row.n }}</td></tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <table>
+    <tr><th>Horizon</th>{% for h in horizons %}<th>{{ h }}D</th>{% endfor %}</tr>
+    <tr><td>Rank IC mean</td>{% for h in horizons %}<td>{{ '%.4f' % sig.ic[h].mean }}</td>{% endfor %}</tr>
+    <tr><td>IC t-stat (NW)</td>{% for h in horizons %}<td class="{{ 'signif' if sig.ic[h].t_stat|abs > 3 else 'suggest' if sig.ic[h].t_stat|abs > 2 else '' }}">{{ '%.2f' % sig.ic[h].t_stat }}</td>{% endfor %}</tr>
+    <tr><td>Hit rate</td>{% for h in horizons %}<td>{{ '%.2f' % sig.ic[h].hit_rate }}</td>{% endfor %}</tr>
+  </table>
+{% endif %}
+{% endfor %}
+
+</body></html>
