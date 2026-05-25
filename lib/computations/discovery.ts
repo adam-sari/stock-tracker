@@ -158,8 +158,9 @@ type SentimentRow = { ticker: string; ts: number; mentions: number; mentions_24h
 export function scoreSentimentSurge(
   rows: SentimentRow[],
   lookbackHours = 24,
+  nowSec: number = Math.floor(Date.now() / 1000),
 ): Map<string, SentimentSurgeScore> {
-  const cutoff = Math.floor(Date.now() / 1000) - lookbackHours * 3600;
+  const cutoff = nowSec - lookbackHours * 3600;
 
   // Latest snapshot per ticker within lookback window
   const latestByTicker = new Map<string, SentimentRow>();
