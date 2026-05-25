@@ -39,27 +39,16 @@ def _to_float(value) -> float | None:
         return None
 
 
-def scan_form4(days_back: int = 1) -> dict[str, int]:
-    """Scan EDGAR Form 4 filings from `days_back` ago to today.
+def _scan_form4_range(start: date, end: date) -> dict[str, int]:
+    """Scan EDGAR Form 4 filings between [start, end] inclusive. Returns counts.
 
-    Returns {inserted, skipped, errors}.
+    Caller is responsible for set_identity. Records its own job_runs entry.
     """
     try:
-        # PyPI package is `edgartools`, import name is `edgar`
-        from edgar import set_identity, get_filings
+        from edgar import get_filings
     except ImportError as e:
         logger.error("edgartools (import 'edgar') not installed: %s", e)
         return {"inserted": 0, "skipped": 0, "errors": 1}
-
-    # SEC EDGAR requires a real contact email in the User-Agent.
-    contact = os.environ.get("EDGAR_CONTACT_EMAIL")
-    if not contact:
-        logger.error("EDGAR_CONTACT_EMAIL not set — required by SEC EDGAR fair-access policy")
-        return {"inserted": 0, "skipped": 0, "errors": 1}
-    set_identity(f"Stock Tracker {contact}")
-
-    end = date.today()
-    start = end - timedelta(days=days_back)
 
     try:
         filings = get_filings(form="4", filing_date=f"{start.isoformat()}:{end.isoformat()}")
@@ -67,9 +56,7 @@ def scan_form4(days_back: int = 1) -> dict[str, int]:
         logger.exception("Failed to fetch Form 4 filings: %s", e)
         return {"inserted": 0, "skipped": 0, "errors": 1}
 
-    inserted = 0
-    skipped = 0
-    errors = 0
+    inserted = skipped = errors = 0
     job_started = int(time.time())
 
     with get_session() as session:
@@ -86,31 +73,25 @@ def scan_form4(days_back: int = 1) -> dict[str, int]:
         for filing_idx, filing in enumerate(filings):
             if filing_idx % 200 == 0 and filing_idx > 0:
                 logger.info("  ...processed %d/%d filings", filing_idx, n_filings)
-                session.commit()  # batch-commit every 200 filings
-
+                session.commit()
             try:
                 form4 = filing.obj()
             except Exception:
                 errors += 1
                 continue
-
-            # Default ticker from issuer; per-row Ticker overrides if present
             default_ticker = ""
             try:
                 if form4.issuer and form4.issuer.ticker:
                     default_ticker = str(form4.issuer.ticker).upper()
             except Exception:
                 pass
-
             insider_name = str(getattr(form4, "insider_name", "") or "")
             accession = filing.accession_no
-
             try:
                 filed_at = int(time.mktime(filing.filing_date.timetuple()))
             except Exception:
                 filed_at = int(time.time())
             filing_url = getattr(filing, "filing_url", None) or getattr(filing, "url", "")
-
             try:
                 df = form4.to_dataframe()
             except Exception:
@@ -119,7 +100,6 @@ def scan_form4(days_back: int = 1) -> dict[str, int]:
             if df is None or len(df) == 0:
                 skipped += 1
                 continue
-
             for i, row in df.iterrows():
                 try:
                     ticker = str(row.get("Ticker") or default_ticker or "").upper().strip()
@@ -133,7 +113,6 @@ def scan_form4(days_back: int = 1) -> dict[str, int]:
                     value = _to_float(row.get("Value"))
                     if value is None and price is not None:
                         value = shares * price
-
                     txn_date_raw = row.get("Date")
                     if hasattr(txn_date_raw, "strftime"):
                         txn_date = txn_date_raw.strftime("%Y-%m-%d")
@@ -141,9 +120,7 @@ def scan_form4(days_back: int = 1) -> dict[str, int]:
                         txn_date = str(txn_date_raw)[:10] if txn_date_raw else ""
                     if not txn_date:
                         continue
-
                     role = str(row.get("Position", "") or "")[:100] or None
-
                     rid = _row_id(accession, i)
                     session.execute(
                         text(
@@ -172,3 +149,20 @@ def scan_form4(days_back: int = 1) -> dict[str, int]:
 
     logger.info("scan_form4: inserted=%d skipped=%d errors=%d", inserted, skipped, errors)
     return {"inserted": inserted, "skipped": skipped, "errors": errors}
+
+
+def scan_form4(days_back: int = 1) -> dict[str, int]:
+    """Scan EDGAR Form 4 filings from `days_back` ago to today."""
+    try:
+        from edgar import set_identity
+    except ImportError as e:
+        logger.error("edgartools (import 'edgar') not installed: %s", e)
+        return {"inserted": 0, "skipped": 0, "errors": 1}
+    contact = os.environ.get("EDGAR_CONTACT_EMAIL")
+    if not contact:
+        logger.error("EDGAR_CONTACT_EMAIL not set — required by SEC EDGAR fair-access policy")
+        return {"inserted": 0, "skipped": 0, "errors": 1}
+    set_identity(f"Stock Tracker {contact}")
+    end = date.today()
+    start = end - timedelta(days=days_back)
+    return _scan_form4_range(start, end)

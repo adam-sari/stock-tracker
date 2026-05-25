@@ -159,6 +159,42 @@ npm run start:all
 
 ---
 
+## Backfilling historical data
+
+The discovery feed and backtest engine work on whatever data the ingestion
+jobs have collected. To populate the database with 5 years of S&P 500 history
+for backtesting:
+
+```powershell
+# 1. S&P 500 membership history (Wikipedia scrape — fast, one-shot)
+npx tsx scripts/backfill/sp500-membership.ts
+
+# 2. Daily candles for all current S&P 500 members (Alpaca, ~5 min for 1 year)
+npx tsx scripts/backfill/daily-candles.ts --from 2021-01-01 --to 2026-05-01
+
+# 3. Congress trades (FMP free tier + Capitol Trades fallback)
+npx tsx scripts/backfill/congress.ts --from 2021-01-01 --to 2026-05-01
+
+# 4. Form 4 insider trades (sidecar, runs overnight)
+cd sidecar
+uv run python -m sidecar.backfill form4 --years 5
+
+# 5. 13F fund holdings (sidecar, ~30 min for 5 years × ~15 funds)
+uv run python -m sidecar.backfill 13f --quarters 20
+```
+
+After backfill completes, run the replay + analysis:
+
+```powershell
+npx tsx scripts/replay-scores.ts --from 2021-01-01 --to 2026-05-01
+cd sidecar
+uv run python -m sidecar.backtest --from 2021-01-01 --to 2026-05-01
+```
+
+The report lands in `out/backtest/<timestamp>/report.html`.
+
+---
+
 ## Known Limitations / Future Work
 
 - **ATS slug map is hardcoded** — the 13-entry Greenhouse map covers well-known tech companies only. A real deployment would need automated slug discovery (e.g., probe `careers.<company>.com` redirects or common slug variants nightly).
