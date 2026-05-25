@@ -5,6 +5,7 @@ we test the function directly with a fresh DB for each test.
 """
 from __future__ import annotations
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from sqlalchemy import text
@@ -18,10 +19,12 @@ def applied_schema(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     monkeypatch.setenv("DB_PATH", str(db_path))
     node_bin = str(PROJECT_ROOT / "node_modules" / ".bin")
+    search_path = os.pathsep.join([node_bin, os.environ.get("PATH", "")])
+    npx = shutil.which("npx", path=search_path) or "npx"
     subprocess.run(
-        ["npx", "tsx", "lib/db/migrate.ts"],
+        [npx, "tsx", "lib/db/migrate.ts"],
         cwd=PROJECT_ROOT,
-        env={**os.environ, "DB_PATH": str(db_path), "PATH": f"{node_bin}:{os.environ.get('PATH', '')}"},
+        env={**os.environ, "DB_PATH": str(db_path)},
         check=True,
         capture_output=True,
     )

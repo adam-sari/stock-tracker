@@ -2,6 +2,7 @@
 from __future__ import annotations
 import importlib
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -21,11 +22,12 @@ def applied_schema(tmp_path, monkeypatch):
     db_module._SessionLocal = None
 
     node_bin = str(PROJECT_ROOT / "node_modules" / ".bin")
-    env = {**os.environ, "DB_PATH": str(db_path), "PATH": f"{node_bin}:{os.environ.get('PATH', '')}"}
+    search_path = os.pathsep.join([node_bin, os.environ.get("PATH", "")])
+    npx = shutil.which("npx", path=search_path) or "npx"
     subprocess.run(
-        ["npx", "tsx", "lib/db/migrate.ts"],
+        [npx, "tsx", "lib/db/migrate.ts"],
         cwd=PROJECT_ROOT,
-        env=env,
+        env={**os.environ, "DB_PATH": str(db_path)},
         check=True,
         capture_output=True,
     )
