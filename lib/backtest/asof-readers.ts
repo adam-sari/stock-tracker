@@ -135,3 +135,26 @@ export function readHaltsAsOf(
      WHERE fetched_at >= ? AND fetched_at <= ?`
   ).all(lower, upper) as HaltAsOfRow[];
 }
+
+export type SentimentAsOfRow = { ticker: string; ts: number; mentions: number; mentions_24h_ago: number | null };
+
+export function readSentimentAsOf(
+  db: Database.Database,
+  asOfDate: string,
+  lookbackHours: number,
+  tickers?: string[],
+): SentimentAsOfRow[] {
+  const upper = asOfEpoch(asOfDate);
+  const lower = upper - lookbackHours * 3600;
+  if (tickers && tickers.length > 0) {
+    const placeholders = tickers.map(() => '?').join(',');
+    return db.prepare(
+      `SELECT ticker, ts, mentions, mentions_24h_ago FROM sentiment_snapshots
+       WHERE ts >= ? AND ts <= ? AND ticker IN (${placeholders})`
+    ).all(lower, upper, ...tickers) as SentimentAsOfRow[];
+  }
+  return db.prepare(
+    `SELECT ticker, ts, mentions, mentions_24h_ago FROM sentiment_snapshots
+     WHERE ts >= ? AND ts <= ?`
+  ).all(lower, upper) as SentimentAsOfRow[];
+}
