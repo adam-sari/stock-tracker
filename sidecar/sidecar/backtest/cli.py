@@ -4,7 +4,9 @@ import argparse
 import datetime as dt
 import json
 import logging
+import math
 from pathlib import Path
+from typing import Any
 
 from sidecar.backtest.loaders import load_backtest_scores, load_candles
 from sidecar.backtest.returns import forward_returns, spy_excess
@@ -16,6 +18,21 @@ from sidecar.backtest.report import render_report
 logger = logging.getLogger(__name__)
 HORIZONS = [1, 5, 21, 63]
 EVENT_STUDY_KINDS = {"halts", "insider"}
+
+
+def _sanitize_for_json(obj: Any) -> Any:
+    """Replace NaN / ±Infinity floats with None so the result is strict-JSON.
+
+    Python's json.dumps emits literal "NaN"/"Infinity"/"-Infinity" by default,
+    which JS JSON.parse rejects — crashing the /backtest page at render time.
+    """
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_for_json(v) for v in obj]
+    if isinstance(obj, float) and not math.isfinite(obj):
+        return None
+    return obj
 
 # project_root/out/backtest — independent of CWD so the report always lands
 # in a predictable place whether you invoke from project root or from sidecar/.
@@ -89,7 +106,9 @@ def main() -> int:
 
     summary = {"run": run_meta, "horizons": HORIZONS,
                "composite_ic": composite_ic, "per_signal": per_signal}
-    (out_dir / "summary.json").write_text(json.dumps(summary, default=str, indent=2))
+    (out_dir / "summary.json").write_text(
+        json.dumps(_sanitize_for_json(summary), default=str, indent=2)
+    )
 
     render_report(out_dir, run_meta, HORIZONS, composite_ic, per_signal, EVENT_STUDY_KINDS)
     logger.info("Report written to %s", out_dir / "report.html")
