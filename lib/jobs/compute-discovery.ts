@@ -3,7 +3,7 @@ import { listHoldings } from '../db/queries/holdings';
 import {
   scoreInsiderClusters, scoreCongressBuys, score13FAccumulation, scoreHaltEvents,
   scoreVolumeBreakout, scoreSentimentSurge,
-  aggregateScores, DEFAULT_WEIGHTS,
+  aggregateScores, getActiveWeights,
 } from '../computations/discovery';
 import { upsertDiscoveryScore, clearStaleDiscoveryScores } from '../db/queries/discovery';
 
@@ -41,7 +41,7 @@ export async function computeDiscoveryOnce(): Promise<{ scored: number }> {
       sentiment: scoreSentimentSurge(sentimentRows),
     };
 
-    const aggregated = aggregateScores(buckets, DEFAULT_WEIGHTS);
+    const aggregated = aggregateScores(buckets, getActiveWeights());
     const computed_at = now;
 
     // Clear stale (older than 2 days) before insert to keep table tidy
