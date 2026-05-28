@@ -96,3 +96,26 @@ describe('EmptyState', () => {
     expect(screen.getByText(/uv run python -m sidecar.backtest/i)).toBeTruthy();
   });
 });
+
+// Regression test for the cross-feature integration bug where a -X theirs merge
+// silently dropped the "Correlations ↗" nav link added by Plan 0003. The
+// `/backtest/correlations` page exists but became unreachable from the UI.
+describe('BacktestPage nav', () => {
+  it('renders a link to /backtest/correlations alongside /discover and /backtest/predictions', async () => {
+    vi.doMock('@/lib/db/migrate', () => ({ applySchema: () => undefined }));
+    vi.doMock('@/lib/db/connection', () => ({ getDb: () => ({}) }));
+    vi.doMock('@/lib/backtest/summary-reader', () => ({ loadLatestSummary: async () => null }));
+    vi.doMock('@/lib/backtest/top-n-queries', () => ({
+      topByCompositeScore: () => [],
+      topByMostSignals: () => [],
+      topByAcceleration: () => [],
+    }));
+    const { default: BacktestPage } = await import('@/app/backtest/page');
+    const element = await BacktestPage();
+    render(element as React.ReactElement);
+    const hrefs = screen.getAllByRole('link').map(a => a.getAttribute('href'));
+    expect(hrefs).toContain('/backtest/correlations');
+    expect(hrefs).toContain('/backtest/predictions');
+    expect(hrefs).toContain('/discover');
+  });
+});
