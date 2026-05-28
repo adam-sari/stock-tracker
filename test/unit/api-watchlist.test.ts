@@ -1,23 +1,13 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
-import { mkdirSync, rmSync, existsSync } from 'node:fs';
-import path from 'node:path';
-import { closeDb, getDb } from '@/lib/db/connection';
-import { applySchema } from '@/lib/db/migrate';
 import { GET, POST } from '@/app/api/watchlist/route';
 import { DELETE } from '@/app/api/watchlist/[ticker]/route';
+import { makeTestDb } from '@/test/helpers/test-db';
 
-const TEST_DB_DIR = path.join(process.cwd(), '.vitest-cache', 'api-watchlist');
-const TEST_DB_PATH = path.join(TEST_DB_DIR, 'test.db');
+const testDb = makeTestDb('api-watchlist');
 
 describe('/api/watchlist', () => {
-  beforeEach(() => {
-    closeDb();
-    if (existsSync(TEST_DB_DIR)) rmSync(TEST_DB_DIR, { recursive: true, force: true });
-    mkdirSync(TEST_DB_DIR, { recursive: true });
-    process.env.DB_PATH = TEST_DB_PATH;
-    applySchema(getDb());
-  });
-  afterAll(() => { closeDb(); rmSync(TEST_DB_DIR, { recursive: true, force: true }); });
+  beforeEach(testDb.reset);
+  afterAll(testDb.teardown);
 
   it('POST adds, GET returns, DELETE removes', async () => {
     const r1 = await POST(new Request('http://x', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ticker: 'AAPL', source: 'manual' }) }));
