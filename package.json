@@ -14,6 +14,7 @@
     "db:init": "tsx lib/db/migrate.ts",
     "probe": "tsx scripts/probe.ts",
     "compute-returns": "tsx scripts/compute-realized-returns.ts",
+    "regen-learned-weights": "tsx scripts/regen-learned-weights.ts",
     "start:all": "concurrently -k -n web,sidecar -c blue,green \"npm run dev\" \"cd sidecar && uv run python -m sidecar\""
   },
   "dependencies": {
