@@ -1,8 +1,9 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import React from 'react';
 import { CompositeSparkline } from '@/components/stock/CompositeSparkline';
 import { BacktestHistoryTable } from '@/components/stock/BacktestHistoryTable';
+import { BacktestTab } from '@/components/stock/BacktestTab';
 
 afterEach(cleanup);
 
@@ -58,5 +59,44 @@ describe('BacktestHistoryTable', () => {
     expect(screen.getByText('0.80')).toBeTruthy();
     const dashes = screen.getAllByText('—');
     expect(dashes.length).toBe(5);
+  });
+});
+
+describe('BacktestTab', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('shows skeleton initially', () => {
+    (globalThis.fetch as any).mockReturnValue(new Promise(() => {}));
+    const { container } = render(React.createElement(BacktestTab, { ticker: 'AAPL' }));
+    expect(container.querySelector('.animate-pulse')).toBeTruthy();
+  });
+
+  it('renders empty state when fetch returns empty history', async () => {
+    (globalThis.fetch as any).mockResolvedValue({ json: async () => ({ history: [] }) });
+    render(React.createElement(BacktestTab, { ticker: 'AAPL' }));
+    await waitFor(() => expect(screen.getByText(/no backtest scores/i)).toBeTruthy());
+  });
+
+  it('renders history table + sparkline when fetch returns data', async () => {
+    (globalThis.fetch as any).mockResolvedValue({
+      json: async () => ({
+        history: [
+          { date: '2026-05-21', ticker: 'AAPL', signal_kind: 'insider', score: 0.8, detail_json: '{}' },
+          { date: '2026-05-20', ticker: 'AAPL', signal_kind: 'insider', score: 0.4, detail_json: '{}' },
+        ],
+      }),
+    });
+    render(React.createElement(BacktestTab, { ticker: 'AAPL' }));
+    await waitFor(() => expect(screen.getByText('2026-05-21')).toBeTruthy());
+    expect(screen.getByLabelText(/sparkline/i)).toBeTruthy();
+  });
+
+  it('calls /api/stock/AAPL/backtest-history on mount', async () => {
+    (globalThis.fetch as any).mockResolvedValue({ json: async () => ({ history: [] }) });
+    render(React.createElement(BacktestTab, { ticker: 'AAPL' }));
+    await waitFor(() => expect((globalThis.fetch as any).mock.calls[0][0]).toBe('/api/stock/AAPL/backtest-history'));
   });
 });
