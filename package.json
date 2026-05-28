@@ -13,6 +13,7 @@
     "test:e2e": "playwright test",
     "db:init": "tsx lib/db/migrate.ts",
     "probe": "tsx scripts/probe.ts",
+    "compute-returns": "tsx scripts/compute-realized-returns.ts",
     "start:all": "concurrently -k -n web,sidecar -c blue,green \"npm run dev\" \"cd sidecar && uv run python -m sidecar\""
   },
   "dependencies": {
