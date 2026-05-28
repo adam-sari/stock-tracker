@@ -40,6 +40,7 @@ export default async function BacktestPage() {
         </div>
         <div className="flex gap-4 items-center">
           <Link href="/discover" className="text-sm hover:underline">/discover ↗</Link>
+          <Link href="/backtest/correlations" className="text-sm hover:underline">Correlations ↗</Link>
           <a
             href="/api/backtest/report"
             target="_blank"
