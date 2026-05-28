@@ -12,6 +12,7 @@ import { InsidersTab } from './InsidersTab';
 import { FundsTab } from './FundsTab';
 import { CongressTab } from './CongressTab';
 import { SentimentTab } from './SentimentTab';
+import { BacktestTab } from './BacktestTab';
 import { SignalsPanel } from './SignalsPanel';
 import type { Bar, Quote } from '@/lib/providers/types';
 
@@ -103,6 +104,7 @@ export function StockDetailClient(props: Props) {
         {activeTab === 'funds' && <FundsTab ticker={ticker} />}
         {activeTab === 'congress' && <CongressTab ticker={ticker} />}
         {activeTab === 'sentiment' && <SentimentTab ticker={ticker} />}
+        {activeTab === 'backtest' && <BacktestTab ticker={ticker} />}
         {activeTab === 'about' && <AboutPanel meta={initialMeta as any} />}
       </section>
     </main>

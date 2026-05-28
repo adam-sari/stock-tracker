@@ -428,3 +428,24 @@ CREATE TABLE IF NOT EXISTS backtest_runs (
 );
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (12);
+
+-- Plan 0001 (realized returns + predictions log) — 2026-05-28
+
+CREATE TABLE IF NOT EXISTS realized_returns (
+  date TEXT NOT NULL,
+  ticker TEXT NOT NULL,
+  horizon_days INTEGER NOT NULL,
+  return_pct REAL,
+  spy_excess_pct REAL,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'no_entry_candle', 'delisted', 'computed')),
+  computed_at INTEGER NOT NULL,
+  PRIMARY KEY (date, ticker, horizon_days)
+);
+CREATE INDEX IF NOT EXISTS ix_realized_returns_date_horizon
+  ON realized_returns(date, horizon_days);
+CREATE INDEX IF NOT EXISTS ix_realized_returns_ticker
+  ON realized_returns(ticker);
+CREATE INDEX IF NOT EXISTS ix_realized_returns_status
+  ON realized_returns(status);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (13);

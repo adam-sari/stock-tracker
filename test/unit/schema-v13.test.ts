@@ -4,10 +4,10 @@ import path from 'node:path';
 import { closeDb, getDb } from '@/lib/db/connection';
 import { applySchema } from '@/lib/db/migrate';
 
-const TEST_DB_DIR = path.join(process.cwd(), '.vitest-cache', 'schema-v12');
+const TEST_DB_DIR = path.join(process.cwd(), '.vitest-cache', 'schema-v13');
 const TEST_DB_PATH = path.join(TEST_DB_DIR, 'test.db');
 
-describe('schema v12 — backtest tables', () => {
+describe('schema v13 — backtest tables', () => {
   beforeEach(() => {
     closeDb();
     if (existsSync(TEST_DB_DIR)) rmSync(TEST_DB_DIR, { recursive: true, force: true });
@@ -17,8 +17,8 @@ describe('schema v12 — backtest tables', () => {
   });
   afterAll(() => { closeDb(); rmSync(TEST_DB_DIR, { recursive: true, force: true }); });
 
-  it('records schema_version 12', () => {
-    const row = getDb().prepare('SELECT version FROM schema_version WHERE version = 12').get();
+  it('records schema_version 13', () => {
+    const row = getDb().prepare('SELECT version FROM schema_version WHERE version = 13').get();
     expect(row).toBeTruthy();
   });
 
@@ -43,7 +43,7 @@ describe('schema v12 — backtest tables', () => {
   it('is idempotent (re-apply succeeds with no error)', () => {
     applySchema(getDb());
     applySchema(getDb());
-    const row = getDb().prepare('SELECT version FROM schema_version WHERE version = 12').get();
+    const row = getDb().prepare('SELECT version FROM schema_version WHERE version = 13').get();
     expect(row).toBeTruthy();
   });
 });

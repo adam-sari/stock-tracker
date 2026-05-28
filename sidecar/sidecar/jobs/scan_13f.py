@@ -17,6 +17,7 @@ import os
 import time
 from sqlalchemy import text
 from sidecar.db import get_session
+from sidecar.jobs.time_utils import date_to_utc_epoch
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ def _process_filing(session, cik: str, name: str, filing, accession_override: st
         period_end = str(filing.filing_date)[:10]
 
     try:
-        filed_at = int(time.mktime(filing.filing_date.timetuple()))
+        filed_at = date_to_utc_epoch(filing.filing_date)
     except Exception:
         filed_at = int(time.time())
     accession = accession_override or filing.accession_no

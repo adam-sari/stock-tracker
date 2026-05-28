@@ -51,15 +51,17 @@ def backfill_form4(
     resumed_from: date | None = None
     if resume:
         last = _max_filed_at_date()
-        if last is not None:
-            candidate = last + timedelta(days=1)
-            if candidate > start_date:
-                logger.info(
-                    "Auto-resuming from %s (skipping %d days already ingested up to %s)",
-                    candidate, (candidate - start_date).days, last,
-                )
-                start_date = candidate
-                resumed_from = last
+        if last is not None and last > start_date:
+            # Refetch the MAX(filed_at) day itself rather than skipping past it:
+            # an interrupted run may have ingested only some of that day's filings.
+            # Dedup is handled by `INSERT ... ON CONFLICT(id) DO NOTHING` in scan_form4.
+            logger.info(
+                "Auto-resuming from %s (skipping %d days already ingested before %s; "
+                "refetching %s to recover same-day filings missed by an interrupted run)",
+                last, (last - start_date).days, last, last,
+            )
+            start_date = last
+            resumed_from = last
 
     if start_date > end_date:
         logger.info("Nothing to backfill: start_date %s > end_date %s after resume", start_date, end_date)

@@ -1,24 +1,13 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
-import { mkdirSync, rmSync, existsSync } from 'node:fs';
-import path from 'node:path';
-import { closeDb, getDb } from '@/lib/db/connection';
-import { applySchema } from '@/lib/db/migrate';
+import { getDb } from '@/lib/db/connection';
 import {
   topByCompositeScore,
   topByMostSignals,
   topByAcceleration,
 } from '@/lib/backtest/top-n-queries';
+import { makeTestDb } from '@/test/helpers/test-db';
 
-const TEST_DB_DIR = path.join(process.cwd(), '.vitest-cache', 'top-n-queries');
-const TEST_DB_PATH = path.join(TEST_DB_DIR, 'test.db');
-
-function resetDb() {
-  closeDb();
-  if (existsSync(TEST_DB_DIR)) rmSync(TEST_DB_DIR, { recursive: true, force: true });
-  mkdirSync(TEST_DB_DIR, { recursive: true });
-  process.env.DB_PATH = TEST_DB_PATH;
-  applySchema(getDb());
-}
+const testDb = makeTestDb('top-n-queries');
 
 function insertScore(date: string, ticker: string, kind: string, score: number) {
   getDb().prepare(
@@ -32,8 +21,8 @@ function today(): { d: string } {
 }
 
 describe('topByCompositeScore', () => {
-  beforeEach(resetDb);
-  afterAll(() => { closeDb(); rmSync(TEST_DB_DIR, { recursive: true, force: true }); });
+  beforeEach(testDb.reset);
+  afterAll(testDb.teardown);
 
   it('sums scores per ticker within the lookback window, sorts DESC', () => {
     const { d } = today();
@@ -64,8 +53,8 @@ describe('topByCompositeScore', () => {
 });
 
 describe('topByMostSignals', () => {
-  beforeEach(resetDb);
-  afterAll(() => { closeDb(); rmSync(TEST_DB_DIR, { recursive: true, force: true }); });
+  beforeEach(testDb.reset);
+  afterAll(testDb.teardown);
 
   it('counts distinct signal_kinds per ticker with score > 0', () => {
     const { d } = today();
@@ -86,8 +75,8 @@ describe('topByMostSignals', () => {
 });
 
 describe('topByAcceleration', () => {
-  beforeEach(resetDb);
-  afterAll(() => { closeDb(); rmSync(TEST_DB_DIR, { recursive: true, force: true }); });
+  beforeEach(testDb.reset);
+  afterAll(testDb.teardown);
 
   it('returns (sum_last_7 - sum_prior_7) per ticker, sorts DESC', () => {
     const db = getDb();

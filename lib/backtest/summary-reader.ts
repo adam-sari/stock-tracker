@@ -29,9 +29,21 @@ export type SummaryJson = {
   per_signal: PerSignal[];
 };
 
+function isValidSummary(x: unknown): x is SummaryJson {
+  if (!x || typeof x !== 'object') return false;
+  const o = x as Record<string, unknown>;
+  if (!o.run || typeof o.run !== 'object') return false;
+  if (!Array.isArray(o.horizons)) return false;
+  if (!o.composite_ic || typeof o.composite_ic !== 'object') return false;
+  if (!Array.isArray(o.per_signal)) return false;
+  return true;
+}
+
 /**
  * Find the newest out/backtest/<timestamp>/summary.json under `rootDir`,
- * parse it, return the typed shape. Returns null if no summary exists.
+ * parse it, return the typed shape. Returns null if no summary exists
+ * or if the file is malformed / fails shape validation (so callers can
+ * render an EmptyState rather than crashing at render-time).
  *
  * `rootDir` defaults to the project's cwd; tests pass a temporary directory.
  */
@@ -50,7 +62,9 @@ export async function loadLatestSummary(rootDir: string = process.cwd()): Promis
     const summaryPath = path.join(backtestDir, candidates[i], 'summary.json');
     try {
       const raw = await fs.readFile(summaryPath, 'utf-8');
-      return JSON.parse(raw) as SummaryJson;
+      const parsed: unknown = JSON.parse(raw);
+      if (!isValidSummary(parsed)) continue;
+      return parsed;
     } catch {
       continue;
     }

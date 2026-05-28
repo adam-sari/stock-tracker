@@ -1,16 +1,16 @@
 import { describe, it, expect, afterAll } from 'vitest';
-import { makeTestDb, cleanupTestDb } from './helpers';
+import { makeTestDb } from '@/test/helpers/test-db';
 import { replayAllSignals } from '@/lib/backtest/replay';
 import { computeDiscoveryOnce } from '@/lib/jobs/compute-discovery';
 import { upsertInsiderTxns } from '@/lib/db/queries/insider';
 
-const NAME = 'equivalence';
+const testDb = makeTestDb('replay-equivalence');
 
 describe('replay equivalence with production scoring', () => {
-  afterAll(() => cleanupTestDb(NAME));
+  afterAll(testDb.teardown);
 
   it('replay for today reproduces today\'s production-side per-signal scores', async () => {
-    const db = makeTestDb(NAME);
+    const db = testDb.reset();
     const now = Math.floor(Date.now() / 1000);
     const today = new Date(now * 1000).toISOString().slice(0, 10);
 
