@@ -59,7 +59,10 @@ export function WatchlistPanel() {
 
   return (
     <section>
-      <h2 className="text-sm uppercase text-muted mb-2">Watchlist</h2>
+      <div className="flex items-baseline gap-3 mb-2">
+        <h2 className="text-sm uppercase text-muted">Watchlist</h2>
+        <Link href="/watchlist/sim" className="text-xs text-muted hover:underline">View PnL sim ↗</Link>
+      </div>
       <div className="overflow-x-auto">
       <table className="w-full text-sm min-w-[400px]">
         <thead className="text-muted uppercase text-xs">
