@@ -18,6 +18,7 @@ import time
 from datetime import date, timedelta
 from sqlalchemy import text
 from sidecar.db import get_session
+from sidecar.jobs.time_utils import date_to_utc_epoch
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ def _scan_form4_range(start: date, end: date) -> dict[str, int]:
             insider_name = str(getattr(form4, "insider_name", "") or "")
             accession = filing.accession_no
             try:
-                filed_at = int(time.mktime(filing.filing_date.timetuple()))
+                filed_at = date_to_utc_epoch(filing.filing_date)
             except Exception:
                 filed_at = int(time.time())
             filing_url = getattr(filing, "filing_url", None) or getattr(filing, "url", "")
