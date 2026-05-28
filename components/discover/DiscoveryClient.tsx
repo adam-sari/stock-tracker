@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { SignalFilters, ALL_SIGNALS } from './SignalFilters';
 import { DiscoveryCard } from './DiscoveryCard';
 
@@ -37,7 +38,11 @@ export function DiscoveryClient({ initial }: { initial: Item[] }) {
       <header className="flex items-baseline justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold">Discover</h1>
-          <p className="text-sm text-muted mt-1">Tickers not in your portfolio, surfaced by active signals.</p>
+          <p className="text-sm text-muted mt-1">
+            Tickers not in your portfolio, surfaced by active signals.
+            {' '}
+            <Link href="/backtest" className="hover:underline">Backtest ↗</Link>
+          </p>
         </div>
         {computedAt && (
           <span className="text-xs text-muted">Last scored: {new Date(computedAt * 1000).toLocaleString()}</span>
