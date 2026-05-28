@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import React from 'react';
 import { CompositeSparkline } from '@/components/stock/CompositeSparkline';
+import { BacktestHistoryTable } from '@/components/stock/BacktestHistoryTable';
 
 afterEach(cleanup);
 
@@ -34,5 +35,28 @@ describe('CompositeSparkline', () => {
     const { container } = render(React.createElement(CompositeSparkline, { points }));
     const d = container.querySelector('path')!.getAttribute('d')!;
     expect(d).not.toMatch(/NaN/);
+  });
+});
+
+describe('BacktestHistoryTable', () => {
+  it('renders empty-state message when rows is empty', () => {
+    render(React.createElement(BacktestHistoryTable, { rows: [], ticker: 'AAPL', inUniverse: true }));
+    expect(screen.getByText(/no backtest scores yet/i)).toBeTruthy();
+  });
+
+  it('shows distinct delisted-ticker empty-state when inUniverse=false', () => {
+    render(React.createElement(BacktestHistoryTable, { rows: [], ticker: 'DEAD', inUniverse: false }));
+    expect(screen.getByText(/not in the backtest universe/i)).toBeTruthy();
+  });
+
+  it('renders one row per date with — for missing signals', () => {
+    const rows = [
+      { date: '2026-05-21', ticker: 'AAPL', signal_kind: 'insider', score: 0.8, detail_json: '{}' },
+    ];
+    render(React.createElement(BacktestHistoryTable, { rows, ticker: 'AAPL', inUniverse: true }));
+    expect(screen.getByText('2026-05-21')).toBeTruthy();
+    expect(screen.getByText('0.80')).toBeTruthy();
+    const dashes = screen.getAllByText('—');
+    expect(dashes.length).toBe(5);
   });
 });
