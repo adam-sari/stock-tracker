@@ -13,7 +13,11 @@ def _epoch(d: date) -> int:
 
 
 def test_backfill_form4_auto_resumes_from_max_filed_at(fresh_db, monkeypatch):
-    """If insider_txns already has rows, advance start_date to MAX(filed_at)+1."""
+    """If insider_txns already has rows, resume by refetching the MAX(filed_at) day.
+
+    The day itself is refetched (not skipped past) because an interrupted run may
+    have ingested only some of that day's filings; ON CONFLICT(id) DO NOTHING dedups.
+    """
     monkeypatch.setenv("EDGAR_CONTACT_EMAIL", "test@example.com")
     # Pretend we ingested up to 2024-01-10 already
     with get_session() as s:
@@ -33,11 +37,14 @@ def test_backfill_form4_auto_resumes_from_max_filed_at(fresh_db, monkeypatch):
     fake_module = MagicMock(set_identity=MagicMock(), get_filings=fake_get_filings)
     with patch.dict("sys.modules", {"edgar": fake_module}):
         from sidecar.backfill.form4 import backfill_form4
-        # Ask for 2024-01-01..2024-01-20 — should auto-resume from 2024-01-11
+        # Ask for 2024-01-01..2024-01-20 — should auto-resume from 2024-01-10 (refetch)
         result = backfill_form4(date(2024, 1, 1), date(2024, 1, 20), chunk_days=7, resume=True)
 
-    # All captured ranges should start >= 2024-01-11
-    assert all(r >= "2024-01-11" for r in captured_ranges), f"got ranges {captured_ranges}"
+    # All captured ranges should start >= 2024-01-10 (day refetched, not skipped).
+    assert all(r >= "2024-01-10" for r in captured_ranges), f"got ranges {captured_ranges}"
+    # First chunk must include 2024-01-10 itself so same-day-but-later filings
+    # missed by an interrupted run get a second chance.
+    assert captured_ranges[0].startswith("2024-01-10:"), f"got first range {captured_ranges[0]}"
     assert result["resumed_from"] == "2024-01-10"
 
 
