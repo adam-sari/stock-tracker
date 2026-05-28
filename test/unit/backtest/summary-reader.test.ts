@@ -72,4 +72,37 @@ describe('loadLatestSummary', () => {
     expect(result!.composite_ic['1'].t_stat).toBe(2.5);
     expect(result!.per_signal[0].kind).toBe('insider');
   });
+
+  it('returns null when summary.json is malformed JSON', async () => {
+    const dir = path.join(BACKTEST_DIR, '20260526-120000');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, 'summary.json'), '{not valid json,,,');
+    const result = await loadLatestSummary(TEST_OUT_DIR);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when summary.json is missing required top-level keys', async () => {
+    const dir = path.join(BACKTEST_DIR, '20260526-120000');
+    mkdirSync(dir, { recursive: true });
+    // Missing composite_ic and per_signal
+    writeFileSync(path.join(dir, 'summary.json'), JSON.stringify({
+      run: { from_date: '2024-01-01', to_date: '2024-12-31', scoring_git_sha: 'x', n_assets: 0, n_dates: 0 },
+      horizons: [1],
+    }));
+    const result = await loadLatestSummary(TEST_OUT_DIR);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when horizons is not an array', async () => {
+    const dir = path.join(BACKTEST_DIR, '20260526-120000');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, 'summary.json'), JSON.stringify({
+      run: { from_date: '2024-01-01', to_date: '2024-12-31', scoring_git_sha: 'x', n_assets: 0, n_dates: 0 },
+      horizons: 'oops',
+      composite_ic: {},
+      per_signal: [],
+    }));
+    const result = await loadLatestSummary(TEST_OUT_DIR);
+    expect(result).toBeNull();
+  });
 });
