@@ -10,6 +10,10 @@ export type BackfillOpts = {
 
 function fmpToRow(t: FmpCongressTrade): CongressTradeRow | null {
   if (!t.ticker) return null;
+  // Drop rows missing a disclosure date — using transactionDate as a fallback
+  // introduces look-ahead bias: PTR rules give members ~30-45 days to file, so
+  // disclosed_at = transactionDate makes the trade appear public weeks early.
+  if (!t.disclosureDate) return null;
   return {
     id: hashCongressTrade(t.ptrUrl, t.ticker, t.transactionDate),
     ticker: t.ticker,
@@ -20,13 +24,14 @@ function fmpToRow(t: FmpCongressTrade): CongressTradeRow | null {
     amount_low: t.amountLow,
     amount_high: t.amountHigh,
     txn_date: t.transactionDate,
-    disclosed_at: Math.floor(new Date(t.disclosureDate || t.transactionDate).getTime() / 1000),
+    disclosed_at: Math.floor(new Date(t.disclosureDate).getTime() / 1000),
     ptr_url: t.ptrUrl,
     source: t.chamber === 'house' ? 'fmp_house_backfill' : 'fmp_senate_backfill',
   };
 }
 
-function ctToRow(t: CapitolTradeItem): CongressTradeRow {
+function ctToRow(t: CapitolTradeItem): CongressTradeRow | null {
+  if (!t.disclosedAt) return null;
   const key = `${t.member}|${t.ticker}|${t.txnDate}`;
   return {
     id: hashCongressTrade(key, t.ticker, t.txnDate),
@@ -38,10 +43,17 @@ function ctToRow(t: CapitolTradeItem): CongressTradeRow {
     amount_low: t.amountLow,
     amount_high: t.amountHigh,
     txn_date: t.txnDate,
-    disclosed_at: t.disclosedAt ? Math.floor(new Date(t.disclosedAt).getTime() / 1000) : 0,
+    disclosed_at: Math.floor(new Date(t.disclosedAt).getTime() / 1000),
     ptr_url: '',
     source: `capitoltrades_${t.chamber}_backfill`,
   };
+}
+
+function countMissingDisclosureFmp(raw: FmpCongressTrade[]): number {
+  return raw.filter(t => t.ticker && !t.disclosureDate).length;
+}
+function countMissingDisclosureCt(raw: CapitolTradeItem[]): number {
+  return raw.filter(t => t.ticker && !t.disclosedAt).length;
 }
 
 function inWindow(date: string, opts: BackfillOpts): boolean {
@@ -68,11 +80,16 @@ export async function backfillCongressTrades(
     let senateRows: CongressTradeRow[];
     try {
       const raw = await fmp.getSenateLatest();
+      const dropped = countMissingDisclosureFmp(raw);
+      if (dropped > 0) warnings.push(`senate_missing_disclosure: ${dropped}`);
       senateRows = raw.map(fmpToRow).filter((r): r is CongressTradeRow => r !== null && inWindow(r.txn_date, opts));
     } catch (e) {
       warnings.push(`senate_fmp: ${(e as Error).message.slice(0, 80)}`);
       const fallback = await ct.getRecentTrades(500);
-      senateRows = fallback.filter(t => t.chamber === 'senate' && inWindow(t.txnDate, opts)).map(ctToRow);
+      const inWindowFallback = fallback.filter(t => t.chamber === 'senate' && inWindow(t.txnDate, opts));
+      const dropped = countMissingDisclosureCt(inWindowFallback);
+      if (dropped > 0) warnings.push(`senate_missing_disclosure: ${dropped}`);
+      senateRows = inWindowFallback.map(ctToRow).filter((r): r is CongressTradeRow => r !== null);
     }
     upsertCongressTrades(senateRows);
     senate = senateRows.length;
@@ -82,11 +99,16 @@ export async function backfillCongressTrades(
     let houseRows: CongressTradeRow[];
     try {
       const raw = await fmp.getHouseLatest();
+      const dropped = countMissingDisclosureFmp(raw);
+      if (dropped > 0) warnings.push(`house_missing_disclosure: ${dropped}`);
       houseRows = raw.map(fmpToRow).filter((r): r is CongressTradeRow => r !== null && inWindow(r.txn_date, opts));
     } catch (e) {
       warnings.push(`house_fmp: ${(e as Error).message.slice(0, 80)}`);
       const fallback = await ct.getRecentTrades(500);
-      houseRows = fallback.filter(t => t.chamber === 'house' && inWindow(t.txnDate, opts)).map(ctToRow);
+      const inWindowFallback = fallback.filter(t => t.chamber === 'house' && inWindow(t.txnDate, opts));
+      const dropped = countMissingDisclosureCt(inWindowFallback);
+      if (dropped > 0) warnings.push(`house_missing_disclosure: ${dropped}`);
+      houseRows = inWindowFallback.map(ctToRow).filter((r): r is CongressTradeRow => r !== null);
     }
     upsertCongressTrades(houseRows);
     house = houseRows.length;

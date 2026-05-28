@@ -76,4 +76,51 @@ describe('backfillCongressTrades', () => {
     const n = (getDb().prepare(`SELECT COUNT(*) AS n FROM congress_trades`).get() as { n: number }).n;
     expect(n).toBe(1);
   });
+
+  it('drops FMP rows missing disclosureDate (no look-ahead fallback to transactionDate)', async () => {
+    const fmp = fakeFmp(
+      [
+        { ticker: 'AAPL', chamber: 'senate', member: 'X', district: '', kind: 'Purchase',
+          amountLow: 1000, amountHigh: 15000, transactionDate: '2024-01-15',
+          disclosureDate: '2024-01-30', ptrUrl: 'http://a' },
+        { ticker: 'MSFT', chamber: 'senate', member: 'Y', district: '', kind: 'Purchase',
+          amountLow: 1000, amountHigh: 15000, transactionDate: '2024-01-16',
+          disclosureDate: undefined, ptrUrl: 'http://b' },
+        { ticker: 'GOOG', chamber: 'senate', member: 'Z', district: '', kind: 'Purchase',
+          amountLow: 1000, amountHigh: 15000, transactionDate: '2024-01-17',
+          disclosureDate: '', ptrUrl: 'http://c' },
+      ],
+      [],
+    );
+    const ct = fakeCT();
+    const r = await backfillCongressTrades(fmp, ct, { fromDate: '2024-01-01', toDate: '2024-02-01' });
+    expect(r.senate).toBe(1);
+    expect(r.warnings.some(w => w.includes('missing_disclosure'))).toBe(true);
+
+    const rows = getDb().prepare(
+      `SELECT ticker, disclosed_at FROM congress_trades ORDER BY ticker`
+    ).all() as Array<{ ticker: string; disclosed_at: number }>;
+    expect(rows.map(r => r.ticker)).toEqual(['AAPL']);
+    expect(rows[0].disclosed_at).toBe(
+      Math.floor(new Date('2024-01-30').getTime() / 1000),
+    );
+  });
+
+  it('drops Capitol Trades fallback rows missing disclosedAt (not stored as disclosed_at=0)', async () => {
+    const fmp = {
+      getSenateLatest: vi.fn().mockRejectedValue(new Error('quota')),
+      getHouseLatest: vi.fn().mockRejectedValue(new Error('quota')),
+    } as unknown as FmpClient;
+    const ct = fakeCT([
+      { ticker: 'SPY', chamber: 'senate', member: 'A', kind: 'Purchase',
+        amountLow: 1000, amountHigh: 15000, txnDate: '2024-01-10', disclosedAt: '2024-01-25' },
+      { ticker: 'QQQ', chamber: 'senate', member: 'B', kind: 'Purchase',
+        amountLow: 1000, amountHigh: 15000, txnDate: '2024-01-11', disclosedAt: undefined },
+    ]);
+    const r = await backfillCongressTrades(fmp, ct, { fromDate: '2024-01-01', toDate: '2024-02-01' });
+    const rows = getDb().prepare(`SELECT ticker FROM congress_trades`).all() as Array<{ ticker: string }>;
+    expect(rows.find(r => r.ticker === 'SPY')).toBeTruthy();
+    expect(rows.find(r => r.ticker === 'QQQ')).toBeUndefined();
+    expect(r.warnings.some(w => w.includes('missing_disclosure'))).toBe(true);
+  });
 });
