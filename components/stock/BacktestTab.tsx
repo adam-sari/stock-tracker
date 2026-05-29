@@ -2,10 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import type { BacktestHistoryRow } from '@/lib/db/queries/backtest-history';
+import type { BacktestHistoryPiRow } from '@/app/api/stock/[ticker]/backtest-history/route';
 import { composeFromHistory } from '@/lib/computations/composite-from-history';
 import { DEFAULT_WEIGHTS } from '@/lib/computations/discovery';
 import { BacktestHistoryTable } from './BacktestHistoryTable';
 import { CompositeSparkline } from './CompositeSparkline';
+
+function fmt(v: number | null | undefined): string {
+  if (v == null) return '—';
+  return (v * 100).toFixed(1) + '%';
+}
 
 function BacktestSkeleton() {
   return (
@@ -16,14 +22,50 @@ function BacktestSkeleton() {
   );
 }
 
+function BacktestPiTable({ rows }: { rows: BacktestHistoryPiRow[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <table className="text-sm w-full mt-2">
+      <thead>
+        <tr>
+          <th className="text-left font-normal text-muted">Date</th>
+          <th className="text-right font-normal text-muted">Score</th>
+          <th className="text-right font-normal text-muted">Ret 21d</th>
+          <th className="text-right font-normal text-muted">vs SPY</th>
+          <th className="text-right font-normal text-muted">21d PI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(r => (
+          <tr key={r.date}>
+            <td className="text-muted">{r.date}</td>
+            <td className="text-right tabular-nums">{r.score.toFixed(2)}</td>
+            <td className="text-right tabular-nums">{fmt(r.return_21d)}</td>
+            <td className="text-right tabular-nums">{fmt(r.spy_excess_21d)}</td>
+            <td className="text-right tabular-nums">
+              {r.lower_21d != null && r.upper_21d != null
+                ? `[${fmt(r.lower_21d)}, ${fmt(r.upper_21d)}]`
+                : <span className="text-muted">—</span>}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export function BacktestTab({ ticker }: { ticker: string }) {
   const [history, setHistory] = useState<BacktestHistoryRow[] | null>(null);
+  const [piRows, setPiRows] = useState<BacktestHistoryPiRow[]>([]);
 
   useEffect(() => {
     fetch(`/api/stock/${ticker}/backtest-history`)
       .then(r => r.json())
-      .then(d => setHistory(d.history ?? []))
-      .catch(() => setHistory([]));
+      .then(d => {
+        setHistory(d.history ?? []);
+        setPiRows(d.rows ?? []);
+      })
+      .catch(() => { setHistory([]); setPiRows([]); });
   }, [ticker]);
 
   if (history === null) return <BacktestSkeleton />;
@@ -38,6 +80,7 @@ export function BacktestTab({ ticker }: { ticker: string }) {
         <div className="w-48 text-accent"><CompositeSparkline points={composite} /></div>
       </header>
       <BacktestHistoryTable rows={history} ticker={ticker} inUniverse={inUniverse} />
+      <BacktestPiTable rows={piRows} />
     </section>
   );
 }
