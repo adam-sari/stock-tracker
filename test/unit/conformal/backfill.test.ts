@@ -34,4 +34,19 @@ describe('backfillConformalHistory', () => {
     const state = db.prepare(`SELECT updates_count FROM conformal_pid_state WHERE horizon_days = 21`).get() as any;
     expect(state.updates_count).toBe(50);
   });
+
+  it('throws when pid_state for the horizon already has updates', async () => {
+    const db = getDb();
+    for (let i = 0; i < 5; i++) {
+      const d = `2026-03-${(i + 1).toString().padStart(2, '0')}`;
+      db.prepare(`INSERT INTO cqr_quantile_preds VALUES (?, 'EPAM', 21, 0.10, ?, ?, ?, '{}', 'lgbm', 1)`)
+        .run(d, -0.05, 0.05, 0.0);
+      db.prepare(`INSERT INTO realized_returns VALUES (?, 'EPAM', 21, ?, ?, 'computed', ?)`)
+        .run(d, 0.02, 0.015, i + 1);
+    }
+    await backfillConformalHistory(db, { horizons: [21] });
+    await expect(
+      backfillConformalHistory(db, { horizons: [21] })
+    ).rejects.toThrow(/already has/i);
+  });
 });

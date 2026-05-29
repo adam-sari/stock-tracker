@@ -21,6 +21,12 @@ export async function backfillConformalHistory(
 
   for (const h of horizons) {
     const stateRow = getOrInitPidState(h, jointAlpha);
+    if (stateRow.updates_count > 0) {
+      throw new Error(
+        `pid_state for h=${h} already has ${stateRow.updates_count} updates. ` +
+        `Reset conformal_pid_state before re-running backfill.`
+      );
+    }
     let algo = {
       q_t: stateRow.q_t, integral: stateRow.integral, prev_err: stateRow.prev_err,
       updates_count: stateRow.updates_count, empirical_coverage: stateRow.empirical_coverage,
@@ -28,19 +34,20 @@ export async function backfillConformalHistory(
 
     const pairs = db.prepare(
       `SELECT c.date AS date, c.ticker AS ticker, c.q_lo AS q_lo, c.q_hi AS q_hi,
-              c.point_pred AS point_pred, c.model_version AS model_version,
+              c.point_pred AS point_pred, c.model_version AS source_model_version,
               r.spy_excess_pct AS realized, r.computed_at AS computed_at
        FROM cqr_quantile_preds c
        JOIN realized_returns r ON r.date = c.date AND r.ticker = c.ticker
          AND r.horizon_days = c.horizon_days AND r.status = 'computed'
          AND r.spy_excess_pct IS NOT NULL
-       WHERE c.horizon_days = ? AND c.alpha BETWEEN 0.099 AND 0.101
+       WHERE c.horizon_days = ? AND c.alpha = ?
        ORDER BY c.date ASC, c.ticker ASC`
-    ).all(h) as Array<any>;
+    ).all(h, jointAlpha) as Array<any>;
 
     const now = Math.floor(Date.now() / 1000);
     let maxCursor = stateRow.updated_at;
 
+    console.log(`h=${h}: processing ${pairs.length} pairs…`);
     db.transaction(() => {
       for (const p of pairs) {
         const score = Math.max(p.q_lo - p.realized, p.realized - p.q_hi);
@@ -51,7 +58,7 @@ export async function backfillConformalHistory(
           point_pred: p.point_pred,
           lower: p.q_lo - algo.q_t, upper: p.q_hi + algo.q_t,
           pid_threshold: algo.q_t,
-          source_model_version: p.model_version,
+          source_model_version: p.source_model_version,
           computed_at: now,
         });
         totalWritten++;
@@ -63,6 +70,7 @@ export async function backfillConformalHistory(
         updated_at: maxCursor,
       });
     })();
+    console.log(`h=${h}: done, q_t=${algo.q_t.toFixed(4)}, updates=${algo.updates_count}`);
   }
 
   return totalWritten;
