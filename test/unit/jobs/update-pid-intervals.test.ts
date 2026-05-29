@@ -36,6 +36,10 @@ describe('runPidIntervalUpdate', () => {
     const rows = getDb().prepare(`SELECT * FROM prediction_intervals WHERE horizon_days = 21`).all() as any[];
     expect(rows.length).toBeGreaterThan(0);
     expect(rows[0].lower).toBeLessThan(rows[0].upper);
+    // PID has processed 30 pairs; threshold should have moved off zero.
+    const state = getDb().prepare(`SELECT q_t, updates_count FROM conformal_pid_state WHERE horizon_days = 21`).get() as any;
+    expect(state.updates_count).toBe(30);
+    expect(state.q_t).not.toBe(0);
   });
 
   it('updates the conformal_pid_state for each horizon', async () => {
