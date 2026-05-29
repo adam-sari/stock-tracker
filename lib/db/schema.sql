@@ -485,3 +485,51 @@ CREATE TABLE IF NOT EXISTS research_citations (
 );
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (14);
+
+-- Plan: conformal prediction layer — 2026-05-29
+
+CREATE TABLE IF NOT EXISTS cqr_quantile_preds (
+  date TEXT NOT NULL,
+  ticker TEXT NOT NULL,
+  horizon_days INTEGER NOT NULL,
+  alpha REAL NOT NULL,
+  q_lo REAL NOT NULL,
+  q_hi REAL NOT NULL,
+  point_pred REAL NOT NULL,
+  features_json TEXT NOT NULL,
+  model_version TEXT NOT NULL,
+  trained_at INTEGER NOT NULL,
+  PRIMARY KEY (date, ticker, horizon_days, alpha)
+);
+CREATE INDEX IF NOT EXISTS ix_cqr_preds_date_horizon
+  ON cqr_quantile_preds (date, horizon_days);
+
+CREATE TABLE IF NOT EXISTS prediction_intervals (
+  date TEXT NOT NULL,
+  ticker TEXT NOT NULL,
+  horizon_days INTEGER NOT NULL,
+  alpha REAL NOT NULL,
+  point_pred REAL NOT NULL,
+  lower REAL NOT NULL,
+  upper REAL NOT NULL,
+  pid_threshold REAL NOT NULL,
+  source_model_version TEXT NOT NULL,
+  computed_at INTEGER NOT NULL,
+  PRIMARY KEY (date, ticker, horizon_days, alpha)
+);
+CREATE INDEX IF NOT EXISTS ix_pred_intervals_ticker
+  ON prediction_intervals (ticker, computed_at DESC);
+
+CREATE TABLE IF NOT EXISTS conformal_pid_state (
+  horizon_days INTEGER NOT NULL,
+  alpha REAL NOT NULL,
+  q_t REAL NOT NULL,
+  integral REAL NOT NULL,
+  prev_err REAL NOT NULL,
+  updates_count INTEGER NOT NULL DEFAULT 0,
+  empirical_coverage REAL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (horizon_days, alpha)
+);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (15);
