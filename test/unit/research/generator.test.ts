@@ -32,6 +32,7 @@ const OK = {
   usage: { input_tokens: 100, output_tokens: 200,
             cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
   cost_usd_micros: 4_200,
+  auth_mode: 'api_key' as const,
 };
 
 describe('generateResearchNote', () => {

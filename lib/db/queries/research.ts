@@ -22,6 +22,7 @@ export function getCachedResearchNote(
   const cutoff = Math.floor(Date.now() / 1000) - CACHE_TTL_SEC;
   const row = db.prepare(`SELECT * FROM research_notes
     WHERE ticker = ? AND mode = ? AND context_hash = ? AND generated_at >= ?
+      AND status IN ('ok','partial')
     ORDER BY generated_at DESC LIMIT 1`).get(ticker, mode, contextHash, cutoff) as any;
   if (!row) return null;
   const citations = db.prepare(`SELECT position, source_table, source_id, source_summary, source_deep_link
