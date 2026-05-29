@@ -1,11 +1,14 @@
 """Nightly CQR training orchestrator."""
 from __future__ import annotations
 import json
+import logging
 import sqlite3
 from datetime import datetime, timezone
 from typing import Iterable
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 from sidecar.conformal.features import extract_features
 from sidecar.conformal.trainer import (
@@ -34,12 +37,14 @@ def run_nightly_cqr_train(
     for h in horizons:
         train_df = extract_features(con, end_date=end_date, horizon=h, lookback_years=2)
         if len(train_df) < 200:
-            continue  # insufficient data; see §8 of the spec
+            logger.warning("h=%d: only %d rows, skipping (need >=200)", h, len(train_df))
+            continue
         models = train_cqr_models(train_df, horizon=h, alpha=alpha,
                                    n_estimators=n_estimators)
 
         today_rows = train_df[train_df['date'] == end_date]
         if today_rows.empty:
+            logger.warning("h=%d: no rows for end_date=%s, skipping", h, end_date)
             continue
         preds = predict_quantiles(models, today_rows)
         version = _model_version(h)
@@ -51,7 +56,7 @@ def run_nightly_cqr_train(
             payload.append((
                 src['date'], src['ticker'], h, alpha,
                 float(pred.q_lo), float(pred.q_hi), float(pred.median),
-                json.dumps(features), version, trained_at,
+                json.dumps(features, allow_nan=False), version, trained_at,
             ))
         con.executemany(
             "INSERT OR REPLACE INTO cqr_quantile_preds "

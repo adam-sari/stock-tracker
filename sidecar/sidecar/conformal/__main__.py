@@ -14,10 +14,13 @@ def main() -> None:
     p.add_argument('--n-estimators', type=int, default=400)
     args = p.parse_args()
     con = sqlite3.connect(args.db)
-    n = run_nightly_cqr_train(
-        con, end_date=args.end_date, alpha=args.alpha,
-        n_estimators=args.n_estimators,
-    )
+    try:
+        n = run_nightly_cqr_train(
+            con, end_date=args.end_date, alpha=args.alpha,
+            n_estimators=args.n_estimators,
+        )
+    finally:
+        con.close()
     print(f"wrote {n} cqr rows")
 
 

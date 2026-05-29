@@ -72,3 +72,16 @@ def test_run_nightly_cqr_train_writes_rows(tmp_path: Path) -> None:
         features = json.loads(row[7])
         assert 'composite_score' in features
         assert isinstance(row[8], str) and row[8].startswith('lgbm-cqr-')
+
+
+def test_run_nightly_cqr_train_is_idempotent(tmp_path: Path) -> None:
+    db = tmp_path / 't.db'
+    con = sqlite3.connect(db)
+    _seed(con)
+    n1 = run_nightly_cqr_train(con, end_date='2026-04-30', horizons=[21],
+                                alpha=0.10, n_estimators=60)
+    n2 = run_nightly_cqr_train(con, end_date='2026-04-30', horizons=[21],
+                                alpha=0.10, n_estimators=60)
+    assert n1 == n2 == 40
+    total = con.execute("SELECT COUNT(*) FROM cqr_quantile_preds").fetchone()[0]
+    assert total == 40  # INSERT OR REPLACE: no duplicates
