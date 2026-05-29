@@ -1,8 +1,7 @@
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
-import { buildTickerContext } from './context-builder';
+import { buildTickerContext, hashContext } from './context-builder';
 import { parseCitations } from './citation-registry';
 import { callClaude } from './claude-client';
 import { PROMPT_VERSION } from './version';
@@ -49,7 +48,7 @@ export async function generateResearchNote(
 
   const context = buildTickerContext(t, db, mode);
   const contextJson = JSON.stringify(context);
-  const context_hash = createHash('sha256').update(contextJson).digest('hex');
+  const context_hash = hashContext(context);
 
   if (!opts.force) {
     const cached = getCachedResearchNote(t, mode, context_hash);

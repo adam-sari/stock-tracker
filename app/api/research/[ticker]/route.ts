@@ -2,8 +2,7 @@ import { applySchema } from '@/lib/db/migrate';
 import { getDb } from '@/lib/db/connection';
 import { generateResearchNote } from '@/lib/research/generator';
 import { getCachedResearchNote } from '@/lib/db/queries/research';
-import { buildTickerContext } from '@/lib/research/context-builder';
-import { createHash } from 'node:crypto';
+import { buildTickerContext, hashContext } from '@/lib/research/context-builder';
 import type { Mode } from '@/lib/research/types';
 
 applySchema();
@@ -27,7 +26,7 @@ export async function GET(req: Request,
 
   const db = getDb();
   const ctxBundle = buildTickerContext(t, db, mode);
-  const hash = createHash('sha256').update(JSON.stringify(ctxBundle)).digest('hex');
+  const hash = hashContext(ctxBundle);
   const cached = getCachedResearchNote(t, mode, hash);
   if (!cached) return new Response('Not cached', { status: 404 });
   return Response.json({ note: cached });

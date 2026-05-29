@@ -1,5 +1,13 @@
+import { createHash } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import type { TickerContext, Mode } from './types';
+
+export function hashContext(ctx: TickerContext): string {
+  // Exclude `built_at` so identical underlying signals hash identically across calls.
+  // Without this the 24h cache TTL never hits because every call gets a fresh timestamp.
+  const { built_at: _ignored, ...stable } = ctx;
+  return createHash('sha256').update(JSON.stringify(stable)).digest('hex');
+}
 
 const NINETY_DAYS = 90 * 86400;
 const VOLUME_SPIKE_RATIO = 2.0;
