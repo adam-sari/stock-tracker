@@ -50,7 +50,10 @@ export function PredictionsTable({ rows }: Props) {
           <th className="font-normal">Ticker</th>
           <th className="font-normal">Signal</th>
           <th className="font-normal text-right">Score</th>
+          <th className="font-normal text-right">1D</th>
+          <th className="font-normal text-right">5D</th>
           <th className="font-normal text-right">21D</th>
+          <th className="font-normal text-right">63D</th>
           <th className="font-normal text-right">21d PI</th>
           <th className="font-normal text-center">In PI</th>
         </tr>
@@ -66,7 +69,10 @@ export function PredictionsTable({ rows }: Props) {
             </td>
             <td className="text-muted">{r.signal_kind}</td>
             <td className="text-right tabular-nums">{r.score.toFixed(2)}</td>
+            <ReturnCell value={r.return_1d} excess={r.spy_excess_1d} />
+            <ReturnCell value={r.return_5d} excess={r.spy_excess_5d} />
             <ReturnCell value={r.return_21d} excess={r.spy_excess_21d} />
+            <ReturnCell value={r.return_63d} excess={r.spy_excess_63d} />
             <PIBandCell lower={r.lower_21d} upper={r.upper_21d} />
             <InPICell value={r.in_pi_21d} />
           </tr>

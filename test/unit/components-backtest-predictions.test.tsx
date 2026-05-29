@@ -17,12 +17,18 @@ import type { PredictionWithPIRow } from '@/lib/backtest/predictions-queries';
 const sampleRows: PredictionWithPIRow[] = [
   {
     date: '2024-05-15', ticker: 'AVBC', signal_kind: 'insider', score: 1.0,
+    return_1d: 0.01, spy_excess_1d: 0.005,
+    return_5d: 0.03, spy_excess_5d: 0.02,
     return_21d: 0.08, spy_excess_21d: 0.05,
+    return_63d: 0.15, spy_excess_63d: 0.10,
     lower_21d: -0.03, upper_21d: 0.09, in_pi_21d: true,
   },
   {
     date: '2024-05-10', ticker: 'NVDA', signal_kind: 'volume', score: 0.85,
+    return_1d: null, spy_excess_1d: null,
+    return_5d: null, spy_excess_5d: null,
     return_21d: null, spy_excess_21d: null,
+    return_63d: null, spy_excess_63d: null,
     lower_21d: null, upper_21d: null, in_pi_21d: null,
   },
 ];
@@ -48,7 +54,10 @@ describe('PredictionsTable', () => {
     expect(screen.getByText('Ticker')).toBeTruthy();
     expect(screen.getByText('Signal')).toBeTruthy();
     expect(screen.getByText('Score')).toBeTruthy();
+    expect(screen.getByText('1D')).toBeTruthy();
+    expect(screen.getByText('5D')).toBeTruthy();
     expect(screen.getByText('21D')).toBeTruthy();
+    expect(screen.getByText('63D')).toBeTruthy();
     expect(screen.getByText('21d PI')).toBeTruthy();
     expect(screen.getByText('In PI')).toBeTruthy();
   });

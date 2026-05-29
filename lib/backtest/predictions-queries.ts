@@ -80,10 +80,29 @@ export function listPredictionsWithReturns(db: Database.Database, opts: ListOpts
 
 export type PredictionWithPIRow = {
   date: string; ticker: string; signal_kind: string; score: number;
+  return_1d: number | null;  spy_excess_1d: number | null;
+  return_5d: number | null;  spy_excess_5d: number | null;
   return_21d: number | null; spy_excess_21d: number | null;
+  return_63d: number | null; spy_excess_63d: number | null;
   lower_21d: number | null; upper_21d: number | null;
   in_pi_21d: boolean | null;
 };
+
+const PIVOTED_RETURNS_WITH_PI_CTE = `
+  WITH r AS (
+    SELECT date, ticker,
+      MAX(CASE WHEN horizon_days = 1  AND status = 'computed' THEN return_pct END)      AS return_1d,
+      MAX(CASE WHEN horizon_days = 1  AND status = 'computed' THEN spy_excess_pct END)  AS spy_excess_1d,
+      MAX(CASE WHEN horizon_days = 5  AND status = 'computed' THEN return_pct END)      AS return_5d,
+      MAX(CASE WHEN horizon_days = 5  AND status = 'computed' THEN spy_excess_pct END)  AS spy_excess_5d,
+      MAX(CASE WHEN horizon_days = 21 AND status = 'computed' THEN return_pct END)      AS return_21d,
+      MAX(CASE WHEN horizon_days = 21 AND status = 'computed' THEN spy_excess_pct END)  AS spy_excess_21d,
+      MAX(CASE WHEN horizon_days = 63 AND status = 'computed' THEN return_pct END)      AS return_63d,
+      MAX(CASE WHEN horizon_days = 63 AND status = 'computed' THEN spy_excess_pct END)  AS spy_excess_63d
+    FROM realized_returns
+    GROUP BY date, ticker
+  )
+`;
 
 export function listPredictionsWithPI(
   db: Database.Database, opts: ListOpts,
@@ -102,14 +121,16 @@ export function listPredictionsWithPI(
   const limit = opts.limit !== undefined ? `LIMIT ${Math.max(0, Math.floor(opts.limit))}` : '';
 
   const rows = db.prepare(`
+    ${PIVOTED_RETURNS_WITH_PI_CTE}
     SELECT bs.date AS date, bs.ticker AS ticker, bs.signal_kind AS signal_kind,
            bs.score AS score,
-           rr.return_pct AS return_21d, rr.spy_excess_pct AS spy_excess_21d,
+           r.return_1d,  r.spy_excess_1d,
+           r.return_5d,  r.spy_excess_5d,
+           r.return_21d, r.spy_excess_21d,
+           r.return_63d, r.spy_excess_63d,
            pi.lower AS lower_21d, pi.upper AS upper_21d
     FROM backtest_scores bs
-    LEFT JOIN realized_returns rr
-      ON rr.date = bs.date AND rr.ticker = bs.ticker
-         AND rr.horizon_days = 21 AND rr.status = 'computed'
+    LEFT JOIN r ON r.date = bs.date AND r.ticker = bs.ticker
     LEFT JOIN prediction_intervals pi
       ON pi.date = bs.date AND pi.ticker = bs.ticker
          AND pi.horizon_days = 21 AND pi.alpha = 0.10
@@ -120,7 +141,10 @@ export function listPredictionsWithPI(
 
   return rows.map(r => ({
     date: r.date, ticker: r.ticker, signal_kind: r.signal_kind, score: r.score,
+    return_1d: r.return_1d, spy_excess_1d: r.spy_excess_1d,
+    return_5d: r.return_5d, spy_excess_5d: r.spy_excess_5d,
     return_21d: r.return_21d, spy_excess_21d: r.spy_excess_21d,
+    return_63d: r.return_63d, spy_excess_63d: r.spy_excess_63d,
     lower_21d: r.lower_21d, upper_21d: r.upper_21d,
     in_pi_21d:
       r.lower_21d === null || r.upper_21d === null || r.spy_excess_21d === null

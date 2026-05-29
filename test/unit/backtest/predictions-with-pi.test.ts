@@ -44,4 +44,20 @@ describe('listPredictionsWithPI', () => {
     const rows = listPredictionsWithPI(db, { signalKind: 'composite' });
     expect(rows[0].in_pi_21d).toBe(false);
   });
+
+  it('returns all 4 horizons in addition to PI columns', () => {
+    const db = getDb();
+    db.prepare(`INSERT INTO backtest_scores VALUES (?, ?, ?, ?, NULL)`)
+      .run('2026-04-01', 'EPAM', 'composite', 0.9);
+    for (const [h, ret, excess] of [[1, 0.001, 0.0005], [5, 0.01, 0.008],
+                                      [21, 0.025, 0.018], [63, 0.08, 0.06]] as const) {
+      db.prepare(`INSERT INTO realized_returns VALUES (?, ?, ?, ?, ?, 'computed', 1)`)
+        .run('2026-04-01', 'EPAM', h, ret, excess);
+    }
+    const rows = listPredictionsWithPI(db, { signalKind: 'composite' });
+    expect(rows[0].return_1d).toBeCloseTo(0.001);
+    expect(rows[0].return_5d).toBeCloseTo(0.01);
+    expect(rows[0].return_21d).toBeCloseTo(0.025);
+    expect(rows[0].return_63d).toBeCloseTo(0.08);
+  });
 });
