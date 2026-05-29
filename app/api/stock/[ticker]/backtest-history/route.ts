@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db/connection';
-import { getBacktestHistoryForTicker } from '@/lib/db/queries/backtest-history';
 
 export type BacktestHistoryPiRow = {
   date: string;
@@ -40,7 +39,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ ticker:
   try {
     const db = getDb();
     return NextResponse.json({
-      history: getBacktestHistoryForTicker(db, ticker, 90),
       rows: getBacktestHistoryWithPi(db, ticker, 90),
     });
   } catch (e) {

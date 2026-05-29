@@ -74,8 +74,8 @@ describe('BacktestTab', () => {
     expect(container.querySelector('.animate-pulse')).toBeTruthy();
   });
 
-  it('renders empty state when fetch returns empty history', async () => {
-    (globalThis.fetch as any).mockResolvedValue({ json: async () => ({ history: [] }) });
+  it('renders empty state when fetch returns empty rows', async () => {
+    (globalThis.fetch as any).mockResolvedValue({ json: async () => ({ rows: [] }) });
     render(React.createElement(BacktestTab, { ticker: 'AAPL' }));
     await waitFor(() => expect(screen.getByText(/no backtest scores/i)).toBeTruthy());
   });
@@ -83,9 +83,9 @@ describe('BacktestTab', () => {
   it('renders history table + sparkline when fetch returns data', async () => {
     (globalThis.fetch as any).mockResolvedValue({
       json: async () => ({
-        history: [
-          { date: '2026-05-21', ticker: 'AAPL', signal_kind: 'insider', score: 0.8, detail_json: '{}' },
-          { date: '2026-05-20', ticker: 'AAPL', signal_kind: 'insider', score: 0.4, detail_json: '{}' },
+        rows: [
+          { date: '2026-05-21', score: 0.8, return_21d: 0.02, spy_excess_21d: 0.01, lower_21d: -0.05, upper_21d: 0.07 },
+          { date: '2026-05-20', score: 0.4, return_21d: -0.01, spy_excess_21d: -0.005, lower_21d: -0.04, upper_21d: 0.06 },
         ],
       }),
     });
@@ -95,7 +95,7 @@ describe('BacktestTab', () => {
   });
 
   it('calls /api/stock/AAPL/backtest-history on mount', async () => {
-    (globalThis.fetch as any).mockResolvedValue({ json: async () => ({ history: [] }) });
+    (globalThis.fetch as any).mockResolvedValue({ json: async () => ({ rows: [] }) });
     render(React.createElement(BacktestTab, { ticker: 'AAPL' }));
     await waitFor(() => expect((globalThis.fetch as any).mock.calls[0][0]).toBe('/api/stock/AAPL/backtest-history'));
   });

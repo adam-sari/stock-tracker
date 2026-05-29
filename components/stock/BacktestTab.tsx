@@ -1,11 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { BacktestHistoryRow } from '@/lib/db/queries/backtest-history';
 import type { BacktestHistoryPiRow } from '@/app/api/stock/[ticker]/backtest-history/route';
-import { composeFromHistory } from '@/lib/computations/composite-from-history';
-import { DEFAULT_WEIGHTS } from '@/lib/computations/discovery';
-import { BacktestHistoryTable } from './BacktestHistoryTable';
 import { CompositeSparkline } from './CompositeSparkline';
 
 function fmt(v: number | null | undefined): string {
@@ -22,10 +18,14 @@ function BacktestSkeleton() {
   );
 }
 
-function BacktestPiTable({ rows }: { rows: BacktestHistoryPiRow[] }) {
-  if (rows.length === 0) return null;
+function BacktestHistoryTable({ rows }: { rows: BacktestHistoryPiRow[] }) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm text-muted italic">No backtest scores yet.</p>
+    );
+  }
   return (
-    <table className="text-sm w-full mt-2">
+    <table className="text-sm w-full">
       <thead>
         <tr>
           <th className="text-left font-normal text-muted">Date</th>
@@ -55,23 +55,21 @@ function BacktestPiTable({ rows }: { rows: BacktestHistoryPiRow[] }) {
 }
 
 export function BacktestTab({ ticker }: { ticker: string }) {
-  const [history, setHistory] = useState<BacktestHistoryRow[] | null>(null);
-  const [piRows, setPiRows] = useState<BacktestHistoryPiRow[]>([]);
+  const [rows, setRows] = useState<BacktestHistoryPiRow[] | null>(null);
 
   useEffect(() => {
     fetch(`/api/stock/${ticker}/backtest-history`)
       .then(r => r.json())
-      .then(d => {
-        setHistory(d.history ?? []);
-        setPiRows(d.rows ?? []);
-      })
-      .catch(() => { setHistory([]); setPiRows([]); });
+      .then(d => { setRows(d.rows ?? []); })
+      .catch(() => { setRows([]); });
   }, [ticker]);
 
-  if (history === null) return <BacktestSkeleton />;
+  if (rows === null) return <BacktestSkeleton />;
 
-  const composite = composeFromHistory(history, DEFAULT_WEIGHTS);
-  const inUniverse = true;
+  const composite = rows
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(r => ({ date: r.date, compositeScore: r.score }));
 
   return (
     <section className="flex flex-col gap-4">
@@ -79,8 +77,7 @@ export function BacktestTab({ ticker }: { ticker: string }) {
         <h3 className="text-sm font-semibold">Backtest scores — last 90 days</h3>
         <div className="w-48 text-accent"><CompositeSparkline points={composite} /></div>
       </header>
-      <BacktestHistoryTable rows={history} ticker={ticker} inUniverse={inUniverse} />
-      <BacktestPiTable rows={piRows} />
+      <BacktestHistoryTable rows={rows} />
     </section>
   );
 }

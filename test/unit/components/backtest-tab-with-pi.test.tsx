@@ -15,7 +15,7 @@ function mockFetchOnce(body: any) {
 }
 
 describe('BacktestTab with PI bands', () => {
-  it('renders rows including lower/upper PI columns', async () => {
+  it('renders PI column inside the single per-date table', async () => {
     mockFetchOnce({
       rows: [
         { date: '2026-04-01', score: 0.9, return_21d: 0.025,
@@ -25,7 +25,26 @@ describe('BacktestTab with PI bands', () => {
       ],
     });
     render(React.createElement(BacktestTab, { ticker: 'EPAM' }));
-    await waitFor(() => expect(screen.getByText(/2026-04-01/)).toBeTruthy());
-    expect(screen.getAllByText(/PI/i).length).toBeGreaterThanOrEqual(1);
+    await waitFor(() => expect(screen.getByText('2026-04-01')).toBeTruthy());
+    // PI header present in the single table
+    expect(screen.getAllByText(/21d PI/i).length).toBeGreaterThanOrEqual(1);
+    // PI values rendered as [lower%, upper%]
+    expect(screen.getByText('[-5.0%, 8.0%]')).toBeTruthy();
+    expect(screen.getByText('[-4.0%, 6.0%]')).toBeTruthy();
+  });
+
+  it('renders em-dash fallback when PI is null', async () => {
+    mockFetchOnce({
+      rows: [
+        { date: '2026-04-01', score: 0.9, return_21d: 0.025,
+          spy_excess_21d: 0.018, lower_21d: null, upper_21d: null },
+      ],
+    });
+    render(React.createElement(BacktestTab, { ticker: 'AAPL' }));
+    await waitFor(() => expect(screen.getByText('2026-04-01')).toBeTruthy());
+    // em-dash shown in the PI cell (there may be multiple em-dashes for null return too,
+    // so just assert at least one exists in the rendered table)
+    const dashes = screen.getAllByText('—');
+    expect(dashes.length).toBeGreaterThanOrEqual(1);
   });
 });
