@@ -486,7 +486,7 @@ CREATE TABLE IF NOT EXISTS research_citations (
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (14);
 
--- Plan: conformal prediction layer — 2026-05-29
+-- Plan 15 (conformal prediction layer) — 2026-05-29
 
 CREATE TABLE IF NOT EXISTS cqr_quantile_preds (
   date TEXT NOT NULL,
@@ -501,8 +501,8 @@ CREATE TABLE IF NOT EXISTS cqr_quantile_preds (
   trained_at INTEGER NOT NULL,
   PRIMARY KEY (date, ticker, horizon_days, alpha)
 );
-CREATE INDEX IF NOT EXISTS ix_cqr_preds_date_horizon
-  ON cqr_quantile_preds (date, horizon_days);
+CREATE INDEX IF NOT EXISTS ix_cqr_preds_horizon_date
+  ON cqr_quantile_preds (horizon_days, date DESC);
 
 CREATE TABLE IF NOT EXISTS prediction_intervals (
   date TEXT NOT NULL,
