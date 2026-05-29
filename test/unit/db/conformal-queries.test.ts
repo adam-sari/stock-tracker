@@ -6,6 +6,7 @@ import { applySchema } from '@/lib/db/migrate';
 import {
   upsertCqrPred, getCqrPredsForDate,
   upsertPredictionInterval, getPredictionIntervalsForTicker,
+  getLatestPredictionIntervalsForTicker,
   getOrInitPidState, updatePidState,
 } from '@/lib/db/queries/conformal';
 
@@ -55,6 +56,26 @@ describe('conformal DB queries', () => {
     const rows = getPredictionIntervalsForTicker('EPAM');
     expect(rows).toHaveLength(1);
     expect(rows[0].lower).toBeCloseTo(-0.06);
+  });
+
+  it('getLatestPredictionIntervalsForTicker returns one row per (horizon, alpha) — the latest', () => {
+    // Two horizons × two dates for the same ticker; expect 2 rows (the later date for each).
+    const insert = (date: string, h: number, lower: number) => {
+      upsertPredictionInterval({
+        date, ticker: 'EPAM', horizon_days: h, alpha: 0.10,
+        point_pred: 0.02, lower, upper: 0.08, pid_threshold: 0.01,
+        source_model_version: 'lgbm', computed_at: 1,
+      });
+    };
+    insert('2026-04-01', 21, -0.05);
+    insert('2026-05-01', 21, -0.03);
+    insert('2026-04-01', 63, -0.10);
+    insert('2026-05-01', 63, -0.08);
+    const rows = getLatestPredictionIntervalsForTicker('EPAM');
+    expect(rows).toHaveLength(2);
+    const byH = Object.fromEntries(rows.map(r => [r.horizon_days, r.lower]));
+    expect(byH[21]).toBeCloseTo(-0.03);
+    expect(byH[63]).toBeCloseTo(-0.08);
   });
 
   it('getOrInitPidState returns zeros on first call, persists thereafter', () => {

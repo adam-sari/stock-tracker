@@ -1,4 +1,6 @@
-import { getPredictionIntervalsForTicker } from '@/lib/db/queries/conformal';
+import {
+  getLatestPredictionIntervalsForTicker, getAllPidStates,
+} from '@/lib/db/queries/conformal';
 
 const TICKER_RE = /^[A-Z]{1,6}(\.[A-Z]{1,2})?$/;
 
@@ -9,6 +11,7 @@ export async function GET(
   const { ticker } = await ctx.params;
   const t = ticker.toUpperCase();
   if (!TICKER_RE.test(t)) return new Response('Bad ticker', { status: 400 });
-  const rows = getPredictionIntervalsForTicker(t);
-  return Response.json({ rows });
+  const rows = getLatestPredictionIntervalsForTicker(t);
+  const states = getAllPidStates();
+  return Response.json({ rows, states });
 }

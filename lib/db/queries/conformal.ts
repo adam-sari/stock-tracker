@@ -55,6 +55,37 @@ export function getPredictionIntervalsForTicker(ticker: string): PredictionInter
   ).all(ticker) as PredictionIntervalRow[];
 }
 
+/**
+ * Returns the latest interval row per (horizon_days, alpha) for a ticker.
+ * Used by the term-structure UI which only needs the freshest 4 rows.
+ */
+export function getLatestPredictionIntervalsForTicker(
+  ticker: string,
+): PredictionIntervalRow[] {
+  return getDb().prepare(
+    `SELECT date, ticker, horizon_days, alpha, point_pred, lower, upper,
+            pid_threshold, source_model_version, computed_at
+     FROM prediction_intervals
+     WHERE ticker = ?
+       AND (horizon_days, alpha, date) IN (
+         SELECT horizon_days, alpha, MAX(date)
+         FROM prediction_intervals
+         WHERE ticker = ?
+         GROUP BY horizon_days, alpha
+       )
+     ORDER BY horizon_days ASC`
+  ).all(ticker, ticker) as PredictionIntervalRow[];
+}
+
+export function getAllPidStates(): PidStateRow[] {
+  return getDb().prepare(
+    `SELECT horizon_days, alpha, q_t, integral, prev_err,
+            updates_count, empirical_coverage, updated_at
+     FROM conformal_pid_state
+     ORDER BY horizon_days ASC`
+  ).all() as PidStateRow[];
+}
+
 export function getOrInitPidState(horizon_days: number, alpha: number): PidStateRow {
   const row = getDb().prepare(
     `SELECT horizon_days, alpha, q_t, integral, prev_err,

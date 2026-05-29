@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ForecastTermStructure } from './ForecastTermStructure';
-import type { PredictionIntervalRow } from '@/lib/db/queries/conformal';
+import type { PredictionIntervalRow, PidStateRow } from '@/lib/db/queries/conformal';
 
 type FdaRow = { event_date: string; committee: string; description: string } | null;
 type DodRow = { award_amount: number; action_date: string; recipient_name: string } | null;
@@ -29,6 +29,7 @@ const fmt$ = (n: number) => {
 export function SignalsPanel({ ticker }: { ticker: string }) {
   const [signals, setSignals] = useState<Signals | null>(null);
   const [intervals, setIntervals] = useState<PredictionIntervalRow[]>([]);
+  const [states, setStates] = useState<PidStateRow[]>([]);
 
   useEffect(() => {
     fetch(`/api/stock/${ticker}/signals`)
@@ -39,11 +40,13 @@ export function SignalsPanel({ ticker }: { ticker: string }) {
 
   useEffect(() => {
     fetch(`/api/conformal/${ticker}`).then(r => r.json())
-      .then(body => setIntervals(body.rows ?? []))
-      .catch(() => setIntervals([]));
+      .then(body => { setIntervals(body.rows ?? []); setStates(body.states ?? []); })
+      .catch(() => { setIntervals([]); setStates([]); });
   }, [ticker]);
 
   const latest21 = intervals.find(r => r.horizon_days === 21 && r.alpha === 0.10);
+  const state21 = states.find(s => s.horizon_days === 21 && s.alpha === 0.10);
+  const pidCalibrated = (state21?.updates_count ?? 0) >= 30;
 
   if (!signals) return null;
   const { fda, dod, ark, edgar, wiki, hiring } = signals;
@@ -110,7 +113,7 @@ export function SignalsPanel({ ticker }: { ticker: string }) {
         horizon_days: r.horizon_days, point_pred: r.point_pred,
         lower: r.lower, upper: r.upper,
       }))}
-      mode={latest21 ? 'pid' : 'cqr'}
+      mode={pidCalibrated ? 'pid' : 'cqr'}
     />
     </div>
   );

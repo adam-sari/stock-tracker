@@ -27,6 +27,7 @@ describe('/api/conformal/[ticker]', () => {
     expect(r.status).toBe(200);
     const body = await r.json();
     expect(body.rows).toEqual([]);
+    expect(Array.isArray(body.states)).toBe(true);
   });
 
   it('returns 200 with rows when intervals exist', async () => {
@@ -37,6 +38,7 @@ describe('/api/conformal/[ticker]', () => {
     const body = await r.json();
     expect(body.rows).toHaveLength(1);
     expect(body.rows[0].horizon_days).toBe(21);
+    expect(Array.isArray(body.states)).toBe(true);
   });
 
   it('returns 400 on invalid ticker', async () => {
