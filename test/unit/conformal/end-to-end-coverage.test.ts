@@ -1,25 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdirSync, rmSync, existsSync } from 'node:fs';
-import path from 'node:path';
-import { getDb, closeDb } from '@/lib/db/connection';
-import { applySchema } from '@/lib/db/migrate';
+import { describe, it, expect } from 'vitest';
 import { applyPidStep, DEFAULT_GAINS } from '@/lib/conformal/pid';
 import { perHorizonAlpha } from '@/lib/conformal/bonferroni';
 
 const GATED = process.env.RUN_SLOW_TESTS === '1';
 const maybe = GATED ? describe : describe.skip;
-
-const DIR = path.join(process.cwd(), '.vitest-cache', 'e2e-coverage');
-const DB = path.join(DIR, 'test.db');
-
-beforeAll(() => {
-  closeDb();
-  if (existsSync(DIR)) rmSync(DIR, { recursive: true, force: true });
-  mkdirSync(DIR, { recursive: true });
-  process.env.DB_PATH = DB;
-  applySchema(getDb());
-});
-afterAll(() => { closeDb(); rmSync(DIR, { recursive: true, force: true }); });
 
 maybe('end-to-end conformal coverage', () => {
   it('empirical coverage on a 2000-step synthetic stream is within ±2pp of 90%', () => {
