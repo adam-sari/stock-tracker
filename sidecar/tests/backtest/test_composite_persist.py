@@ -1,6 +1,5 @@
 import sqlite3
 from pathlib import Path
-import pandas as pd
 
 from sidecar.backtest.composite_persist import persist_composite_scores
 
@@ -56,3 +55,20 @@ def test_persist_composite_is_idempotent(tmp_path: Path) -> None:
         "SELECT COUNT(*) FROM backtest_scores WHERE signal_kind='composite'"
     ).fetchone()[0]
     assert n_composite == 2
+
+
+def test_persist_composite_empty_db_returns_zero(tmp_path: Path) -> None:
+    db = tmp_path / 'test.db'
+    con = sqlite3.connect(db)
+    con.executescript(
+        """
+        CREATE TABLE backtest_scores (
+          date TEXT NOT NULL, ticker TEXT NOT NULL, signal_kind TEXT NOT NULL,
+          score REAL NOT NULL, detail_json TEXT,
+          PRIMARY KEY (date, ticker, signal_kind)
+        );
+        """
+    )
+    assert persist_composite_scores(con) == 0
+    n = con.execute("SELECT COUNT(*) FROM backtest_scores").fetchone()[0]
+    assert n == 0
