@@ -52,8 +52,8 @@ describe('applyPidStep', () => {
                                     alphaTarget: alpha }, DEFAULT_GAINS);
     }
     expect(state.empirical_coverage).not.toBeNull();
-    // Coverage = fraction of last 100 where score <= q_t
-    // Roughly 90% of observations have low scores → coverage near 0.90
+    // After 150 steps q_t has adapted. EMA coverage is non-null and within
+    // the plausible band; this asserts the field is maintained, not its precision.
     expect(state.empirical_coverage!).toBeGreaterThan(0.80);
     expect(state.empirical_coverage!).toBeLessThan(1.00);
   });
