@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ForecastTermStructure } from './ForecastTermStructure';
+import type { PredictionIntervalRow } from '@/lib/db/queries/conformal';
 
 type FdaRow = { event_date: string; committee: string; description: string } | null;
 type DodRow = { award_amount: number; action_date: string; recipient_name: string } | null;
@@ -26,6 +28,7 @@ const fmt$ = (n: number) => {
 
 export function SignalsPanel({ ticker }: { ticker: string }) {
   const [signals, setSignals] = useState<Signals | null>(null);
+  const [intervals, setIntervals] = useState<PredictionIntervalRow[]>([]);
 
   useEffect(() => {
     fetch(`/api/stock/${ticker}/signals`)
@@ -34,11 +37,20 @@ export function SignalsPanel({ ticker }: { ticker: string }) {
       .catch(() => setSignals({ fda: null, dod: null, ark: null, edgar: null, wiki: null, hiring: null }));
   }, [ticker]);
 
+  useEffect(() => {
+    fetch(`/api/conformal/${ticker}`).then(r => r.json())
+      .then(body => setIntervals(body.rows ?? []))
+      .catch(() => setIntervals([]));
+  }, [ticker]);
+
+  const latest21 = intervals.find(r => r.horizon_days === 21 && r.alpha === 0.10);
+
   if (!signals) return null;
   const { fda, dod, ark, edgar, wiki, hiring } = signals;
   if (!fda && !dod && !ark && !edgar && !wiki && !hiring) return null;
 
   return (
+    <div className="flex flex-col gap-2">
     <div className="flex flex-wrap gap-3 text-xs">
       {fda && (
         <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/10 text-cyan-300">
@@ -80,6 +92,24 @@ export function SignalsPanel({ ticker }: { ticker: string }) {
           </span>
         </span>
       )}
+    </div>
+    {latest21 && (
+      <div className="flex items-baseline gap-2 text-xs">
+        <span className="text-muted">
+          21d alpha: {(latest21.point_pred * 100).toFixed(1)}%
+          <span className="ml-1">
+            [90% PI: {(latest21.lower * 100).toFixed(1)}%, {(latest21.upper * 100).toFixed(1)}%]
+          </span>
+        </span>
+      </div>
+    )}
+    <ForecastTermStructure
+      rows={intervals.filter(r => r.alpha === 0.10).map(r => ({
+        horizon_days: r.horizon_days, point_pred: r.point_pred,
+        lower: r.lower, upper: r.upper,
+      }))}
+      mode={latest21 ? 'pid' : 'cqr'}
+    />
     </div>
   );
 }
