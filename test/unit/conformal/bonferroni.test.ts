@@ -18,4 +18,16 @@ describe('Bonferroni helpers', () => {
     expect(validateJointCoverage([0.92, 0.91, 0.93, 0.90], 0.10)).toBe(true);
     expect(validateJointCoverage([0.92, 0.91, 0.93, 0.85], 0.10)).toBe(false);
   });
+
+  it('perHorizonAlpha throws on NaN or non-integer k', () => {
+    expect(() => perHorizonAlpha(NaN, 4)).toThrow(/finite/i);
+    expect(() => perHorizonAlpha(0.10, NaN)).toThrow(/finite/i);
+    expect(() => perHorizonAlpha(0.10, 2.7)).toThrow(/integer/i);
+  });
+
+  it('validateJointCoverage throws on empty array or invalid alpha', () => {
+    expect(() => validateJointCoverage([], 0.10)).toThrow(/non-empty/i);
+    expect(() => validateJointCoverage([0.9, 0.9], 0)).toThrow(/jointAlpha/i);
+    expect(() => validateJointCoverage([0.9, 0.9], 1.1)).toThrow(/jointAlpha/i);
+  });
 });
