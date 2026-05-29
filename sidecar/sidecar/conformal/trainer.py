@@ -8,8 +8,6 @@ import pandas as pd
 
 
 FEATURE_COLS_NUM = ['composite_score', 'vol_30d', 'market_vol_30d', 'score_delta_5d']
-SECTOR_PREFIX = 'sector_'
-
 
 class CqrModels(TypedDict):
     q_lo: lgb.Booster
@@ -48,6 +46,8 @@ def train_cqr_models(
     n_estimators: int = 400,
 ) -> CqrModels:
     """Train three quantile models for the given joint alpha."""
+    if features_df.empty:
+        raise ValueError("train_cqr_models received empty features_df")
     X = _encode(features_df)
     y = features_df['spy_excess_pct'].astype(float)
     q_lo = _train_one(X, y, alpha=alpha / 2, n_estimators=n_estimators)

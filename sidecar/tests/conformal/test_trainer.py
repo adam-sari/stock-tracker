@@ -51,3 +51,15 @@ def test_intervals_widen_with_vol_30d() -> None:
     width_lo = (p_lo['q_hi'] - p_lo['q_lo']).mean()
     width_hi = (p_hi['q_hi'] - p_hi['q_lo']).mean()
     assert width_hi > width_lo
+
+
+import pytest
+
+
+def test_train_cqr_raises_on_empty_features() -> None:
+    empty = pd.DataFrame(columns=[
+        'composite_score', 'vol_30d', 'market_vol_30d', 'score_delta_5d',
+        'sector', 'spy_excess_pct',
+    ])
+    with pytest.raises(ValueError, match='empty'):
+        train_cqr_models(empty, horizon=21, alpha=0.10)
