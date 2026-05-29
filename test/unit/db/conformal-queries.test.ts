@@ -61,6 +61,7 @@ describe('conformal DB queries', () => {
     const s1 = getOrInitPidState(21, 0.10);
     expect(s1.q_t).toBe(0);
     expect(s1.updates_count).toBe(0);
+    expect(s1.empirical_coverage).toBeNull();
     updatePidState({ horizon_days: 21, alpha: 0.10, q_t: 0.05, integral: 0.01,
       prev_err: 0.1, updates_count: 1, empirical_coverage: 0.9, updated_at: 7 });
     const s2 = getOrInitPidState(21, 0.10);

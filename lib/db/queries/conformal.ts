@@ -30,7 +30,9 @@ export function upsertCqrPred(r: CqrPredRow): void {
 
 export function getCqrPredsForDate(date: string, horizon_days: number): CqrPredRow[] {
   return getDb().prepare(
-    `SELECT * FROM cqr_quantile_preds WHERE date = ? AND horizon_days = ?`
+    `SELECT date, ticker, horizon_days, alpha, q_lo, q_hi, point_pred,
+            features_json, model_version, trained_at
+     FROM cqr_quantile_preds WHERE date = ? AND horizon_days = ?`
   ).all(date, horizon_days) as CqrPredRow[];
 }
 
@@ -46,14 +48,18 @@ export function upsertPredictionInterval(r: PredictionIntervalRow): void {
 
 export function getPredictionIntervalsForTicker(ticker: string): PredictionIntervalRow[] {
   return getDb().prepare(
-    `SELECT * FROM prediction_intervals WHERE ticker = ?
+    `SELECT date, ticker, horizon_days, alpha, point_pred, lower, upper,
+            pid_threshold, source_model_version, computed_at
+     FROM prediction_intervals WHERE ticker = ?
      ORDER BY computed_at DESC`
   ).all(ticker) as PredictionIntervalRow[];
 }
 
 export function getOrInitPidState(horizon_days: number, alpha: number): PidStateRow {
   const row = getDb().prepare(
-    `SELECT * FROM conformal_pid_state WHERE horizon_days = ? AND alpha = ?`
+    `SELECT horizon_days, alpha, q_t, integral, prev_err,
+            updates_count, empirical_coverage, updated_at
+     FROM conformal_pid_state WHERE horizon_days = ? AND alpha = ?`
   ).get(horizon_days, alpha) as PidStateRow | undefined;
   if (row) return row;
   return {
