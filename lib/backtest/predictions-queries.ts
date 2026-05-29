@@ -88,22 +88,6 @@ export type PredictionWithPIRow = {
   in_pi_21d: boolean | null;
 };
 
-const PIVOTED_RETURNS_WITH_PI_CTE = `
-  WITH r AS (
-    SELECT date, ticker,
-      MAX(CASE WHEN horizon_days = 1  AND status = 'computed' THEN return_pct END)      AS return_1d,
-      MAX(CASE WHEN horizon_days = 1  AND status = 'computed' THEN spy_excess_pct END)  AS spy_excess_1d,
-      MAX(CASE WHEN horizon_days = 5  AND status = 'computed' THEN return_pct END)      AS return_5d,
-      MAX(CASE WHEN horizon_days = 5  AND status = 'computed' THEN spy_excess_pct END)  AS spy_excess_5d,
-      MAX(CASE WHEN horizon_days = 21 AND status = 'computed' THEN return_pct END)      AS return_21d,
-      MAX(CASE WHEN horizon_days = 21 AND status = 'computed' THEN spy_excess_pct END)  AS spy_excess_21d,
-      MAX(CASE WHEN horizon_days = 63 AND status = 'computed' THEN return_pct END)      AS return_63d,
-      MAX(CASE WHEN horizon_days = 63 AND status = 'computed' THEN spy_excess_pct END)  AS spy_excess_63d
-    FROM realized_returns
-    GROUP BY date, ticker
-  )
-`;
-
 export function listPredictionsWithPI(
   db: Database.Database, opts: ListOpts,
 ): PredictionWithPIRow[] {
@@ -121,7 +105,7 @@ export function listPredictionsWithPI(
   const limit = opts.limit !== undefined ? `LIMIT ${Math.max(0, Math.floor(opts.limit))}` : '';
 
   const rows = db.prepare(`
-    ${PIVOTED_RETURNS_WITH_PI_CTE}
+    ${PIVOTED_RETURNS_CTE}
     SELECT bs.date AS date, bs.ticker AS ticker, bs.signal_kind AS signal_kind,
            bs.score AS score,
            r.return_1d,  r.spy_excess_1d,
@@ -133,7 +117,7 @@ export function listPredictionsWithPI(
     LEFT JOIN r ON r.date = bs.date AND r.ticker = bs.ticker
     LEFT JOIN prediction_intervals pi
       ON pi.date = bs.date AND pi.ticker = bs.ticker
-         AND pi.horizon_days = 21 AND pi.alpha = 0.10
+         AND pi.horizon_days = 21 AND pi.alpha BETWEEN 0.099 AND 0.101
     ${whereClause}
     ORDER BY bs.date DESC, bs.score DESC
     ${limit}
