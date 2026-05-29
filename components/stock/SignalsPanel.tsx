@@ -47,10 +47,11 @@ export function SignalsPanel({ ticker }: { ticker: string }) {
 
   if (!signals) return null;
   const { fda, dod, ark, edgar, wiki, hiring } = signals;
-  if (!fda && !dod && !ark && !edgar && !wiki && !hiring) return null;
+  if (!fda && !dod && !ark && !edgar && !wiki && !hiring && intervals.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-2">
+    {(fda || dod || ark || edgar || wiki || hiring) && (
     <div className="flex flex-wrap gap-3 text-xs">
       {fda && (
         <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/10 text-cyan-300">
@@ -93,6 +94,7 @@ export function SignalsPanel({ ticker }: { ticker: string }) {
         </span>
       )}
     </div>
+    )}
     {latest21 && (
       <div className="flex items-baseline gap-2 text-xs">
         <span className="text-muted">
