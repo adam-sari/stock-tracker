@@ -79,5 +79,5 @@ def extract_features(
         df.groupby('ticker')['composite_score'].transform(lambda s: s.diff(5))
     )
 
-    df = df.dropna(subset=['composite_score', 'spy_excess_pct'])
+    df = df.dropna(subset=['composite_score', 'spy_excess_pct', 'vol_30d', 'market_vol_30d'])
     return df.reset_index(drop=True)

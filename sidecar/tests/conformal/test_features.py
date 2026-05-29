@@ -62,3 +62,13 @@ def test_extract_features_excludes_uncomputed_realizations(tmp_path: Path) -> No
     con.commit()
     df = extract_features(con, end_date='2026-04-29', horizon=21, lookback_years=2)
     assert '2026-04-10' not in df['date'].tolist()
+
+
+def test_extract_features_drops_vol_warmup_rows(tmp_path: Path) -> None:
+    """First ~10 days per ticker have NaN vol_30d (rolling warmup) and must be dropped."""
+    db = tmp_path / 't.db'
+    con = sqlite3.connect(db)
+    _seed_db(con)
+    df = extract_features(con, end_date='2026-04-29', horizon=21, lookback_years=2)
+    assert df['vol_30d'].notna().all()
+    assert df['market_vol_30d'].notna().all()
