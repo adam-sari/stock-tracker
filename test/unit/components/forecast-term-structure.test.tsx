@@ -35,4 +35,15 @@ describe('ForecastTermStructure', () => {
     }));
     expect(screen.getByText(/raw CQR/i)).toBeTruthy();
   });
+
+  it('keeps point_pred visible when it lies outside the PI band', () => {
+    const { container } = render(React.createElement(ForecastTermStructure, {
+      rows: [
+        { horizon_days: 21, point_pred: 0.5, lower: -0.05, upper: 0.05 },
+      ],
+    }));
+    const lines = container.querySelectorAll('svg line');
+    // At least the baseline + the point marker should be present
+    expect(lines.length).toBeGreaterThanOrEqual(2);
+  });
 });

@@ -21,7 +21,7 @@ export function ForecastTermStructure(
 
   const sorted = [...rows].sort((a, b) => a.horizon_days - b.horizon_days);
   const maxAbs = Math.max(
-    ...sorted.flatMap(r => [Math.abs(r.lower), Math.abs(r.upper)])
+    ...sorted.flatMap(r => [Math.abs(r.lower), Math.abs(r.upper), Math.abs(r.point_pred)])
   );
   const yMax = Math.max(maxAbs, 0.001);
 
