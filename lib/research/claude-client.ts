@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { resolveAuthMode, type AuthMode } from './oauth-token';
 import type { Mode } from './types';
 
 // Anthropic pricing per million tokens (Opus 4.7 as of 2026-01).
@@ -34,6 +35,7 @@ export type CallOpts = {
   mode: Mode;
   maxTokens: number;
   apiKey?: string;
+  authOverride?: AuthMode;
 };
 
 export type CallResult = {
@@ -47,6 +49,7 @@ export type CallResult = {
     cache_creation_input_tokens: number;
   };
   cost_usd_micros: number;
+  auth_mode: 'api_key' | 'oauth';
 };
 
 function isRetryable(err: any): boolean {
@@ -72,7 +75,17 @@ function computeCostMicros(model: string, u: CallResult['usage']): number {
 }
 
 export async function callClaude(opts: CallOpts): Promise<CallResult> {
-  const client = new Anthropic({ apiKey: opts.apiKey ?? process.env.ANTHROPIC_API_KEY });
+  const auth = opts.authOverride
+    ?? (opts.apiKey ? { kind: 'api_key' as const, apiKey: opts.apiKey } : resolveAuthMode());
+  if (!auth) {
+    throw new Error(
+      'No authentication available: set ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ' +
+      'or `claude login` to use your Max subscription'
+    );
+  }
+  const client = auth.kind === 'api_key'
+    ? new Anthropic({ apiKey: auth.apiKey })
+    : new Anthropic({ authToken: auth.token.accessToken });
 
   const params: any = {
     model: opts.model,
@@ -103,9 +116,13 @@ export async function callClaude(opts: CallOpts): Promise<CallResult> {
         cache_read_input_tokens: res.usage?.cache_read_input_tokens ?? 0,
         cache_creation_input_tokens: res.usage?.cache_creation_input_tokens ?? 0,
       };
+      // OAuth (Max subscription) usage is billed against the user's plan
+      // quota, not at per-token API rates — record zero so the monthly
+      // budget gate (denominated in USD) doesn't trip.
+      const cost_usd_micros = auth.kind === 'oauth' ? 0 : computeCostMicros(opts.model, usage);
       return {
         text, model: res.model ?? opts.model, stop_reason: res.stop_reason ?? null,
-        usage, cost_usd_micros: computeCostMicros(opts.model, usage),
+        usage, cost_usd_micros, auth_mode: auth.kind,
       };
     } catch (e) {
       lastErr = e;
