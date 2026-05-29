@@ -449,3 +449,39 @@ CREATE INDEX IF NOT EXISTS ix_realized_returns_status
   ON realized_returns(status);
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (13);
+
+-- Plan 14 (AI Research Assistant) — 2026-05-28
+
+CREATE TABLE IF NOT EXISTS research_notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ticker TEXT NOT NULL,
+  mode TEXT NOT NULL CHECK (mode IN ('standard', 'deep')),
+  generated_at INTEGER NOT NULL,
+  model_id TEXT NOT NULL,
+  prompt_version TEXT NOT NULL,
+  prompt_tokens INTEGER NOT NULL,
+  completion_tokens INTEGER NOT NULL,
+  cache_read_tokens INTEGER DEFAULT 0,
+  cache_creation_tokens INTEGER DEFAULT 0,
+  cost_usd_micros INTEGER NOT NULL,
+  markdown TEXT NOT NULL,
+  html TEXT NOT NULL,
+  context_hash TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('ok','error','partial')),
+  error_message TEXT,
+  UNIQUE (ticker, mode, generated_at)
+);
+CREATE INDEX IF NOT EXISTS ix_research_notes_ticker_mode_time
+  ON research_notes (ticker, mode, generated_at DESC);
+
+CREATE TABLE IF NOT EXISTS research_citations (
+  note_id INTEGER NOT NULL REFERENCES research_notes(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL,
+  source_table TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  source_summary TEXT NOT NULL,
+  source_deep_link TEXT NOT NULL,
+  PRIMARY KEY (note_id, position)
+);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (14);

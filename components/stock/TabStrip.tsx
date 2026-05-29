@@ -10,6 +10,7 @@ const TABS = [
   { id: 'congress', label: 'Congress' },
   { id: 'sentiment', label: 'Sentiment' },
   { id: 'backtest', label: 'Backtest' },
+  { id: 'research', label: '✦ Research' },
   { id: 'about', label: 'About' },
 ] as const;
 

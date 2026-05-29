@@ -18,9 +18,13 @@
     "start:all": "concurrently -k -n web,sidecar -c blue,green \"npm run dev\" \"cd sidecar && uv run python -m sidecar\""
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
+    "@floating-ui/react": "^0.27.19",
     "better-sqlite3": "^11.7.0",
     "fast-xml-parser": "^5.8.0",
+    "isomorphic-dompurify": "^3.15.0",
     "lightweight-charts": "^5.0.0",
+    "marked": "^18.0.4",
     "next": "^15.0.0",
     "node-cron": "^3.0.3",
     "node-html-parser": "^7.1.0",
@@ -34,6 +38,7 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/better-sqlite3": "^7.6.12",
+    "@types/marked": "^5.0.2",
     "@types/node": "^22.0.0",
     "@types/node-cron": "^3.0.11",
     "@types/react": "^19.0.0",
