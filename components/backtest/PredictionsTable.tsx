@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import type { PredictionRow } from '@/lib/backtest/predictions-queries';
+import type { PredictionWithPIRow } from '@/lib/backtest/predictions-queries';
 
-type Props = { rows: PredictionRow[] };
+type Props = { rows: PredictionWithPIRow[] };
 
 function ReturnCell({ value, excess }: { value: number | null; excess: number | null }) {
   if (value === null || value === undefined) {
@@ -20,6 +20,27 @@ function ReturnCell({ value, excess }: { value: number | null; excess: number | 
   );
 }
 
+function PIBandCell({ lower, upper }: { lower: number | null; upper: number | null }) {
+  if (lower === null || upper === null) {
+    return <td className="text-right text-muted">—</td>;
+  }
+  const fmt = (v: number) => `${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
+  return (
+    <td className="text-right tabular-nums text-muted">
+      {fmt(lower)} to {fmt(upper)}
+    </td>
+  );
+}
+
+function InPICell({ value }: { value: boolean | null }) {
+  if (value === null) return <td className="text-center text-muted">—</td>;
+  return (
+    <td className={`text-center ${value ? 'text-green-500' : 'text-red-500'}`}>
+      {value ? '✓' : '✗'}
+    </td>
+  );
+}
+
 export function PredictionsTable({ rows }: Props) {
   return (
     <table className="text-sm w-full">
@@ -29,10 +50,9 @@ export function PredictionsTable({ rows }: Props) {
           <th className="font-normal">Ticker</th>
           <th className="font-normal">Signal</th>
           <th className="font-normal text-right">Score</th>
-          <th className="font-normal text-right">1D</th>
-          <th className="font-normal text-right">5D</th>
           <th className="font-normal text-right">21D</th>
-          <th className="font-normal text-right">63D</th>
+          <th className="font-normal text-right">21d PI</th>
+          <th className="font-normal text-center">In PI</th>
         </tr>
       </thead>
       <tbody>
@@ -46,10 +66,9 @@ export function PredictionsTable({ rows }: Props) {
             </td>
             <td className="text-muted">{r.signal_kind}</td>
             <td className="text-right tabular-nums">{r.score.toFixed(2)}</td>
-            <ReturnCell value={r.return_1d} excess={r.spy_excess_1d} />
-            <ReturnCell value={r.return_5d} excess={r.spy_excess_5d} />
             <ReturnCell value={r.return_21d} excess={r.spy_excess_21d} />
-            <ReturnCell value={r.return_63d} excess={r.spy_excess_63d} />
+            <PIBandCell lower={r.lower_21d} upper={r.upper_21d} />
+            <InPICell value={r.in_pi_21d} />
           </tr>
         ))}
       </tbody>

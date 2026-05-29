@@ -12,22 +12,18 @@ vi.mock('next/link', () => ({
 
 import { PredictionsTable } from '@/components/backtest/PredictionsTable';
 import { HitRateCard } from '@/components/backtest/HitRateCard';
-import type { PredictionRow } from '@/lib/backtest/predictions-queries';
+import type { PredictionWithPIRow } from '@/lib/backtest/predictions-queries';
 
-const sampleRows: PredictionRow[] = [
+const sampleRows: PredictionWithPIRow[] = [
   {
     date: '2024-05-15', ticker: 'AVBC', signal_kind: 'insider', score: 1.0,
-    return_1d: 0.012, spy_excess_1d: 0.008,
-    return_5d: 0.121, spy_excess_5d: 0.10,
     return_21d: 0.08, spy_excess_21d: 0.05,
-    return_63d: null, spy_excess_63d: null,
+    lower_21d: -0.03, upper_21d: 0.09, in_pi_21d: true,
   },
   {
     date: '2024-05-10', ticker: 'NVDA', signal_kind: 'volume', score: 0.85,
-    return_1d: -0.005, spy_excess_1d: -0.003,
-    return_5d: null, spy_excess_5d: null,
     return_21d: null, spy_excess_21d: null,
-    return_63d: null, spy_excess_63d: null,
+    lower_21d: null, upper_21d: null, in_pi_21d: null,
   },
 ];
 
@@ -52,10 +48,9 @@ describe('PredictionsTable', () => {
     expect(screen.getByText('Ticker')).toBeTruthy();
     expect(screen.getByText('Signal')).toBeTruthy();
     expect(screen.getByText('Score')).toBeTruthy();
-    expect(screen.getByText('1D')).toBeTruthy();
-    expect(screen.getByText('5D')).toBeTruthy();
     expect(screen.getByText('21D')).toBeTruthy();
-    expect(screen.getByText('63D')).toBeTruthy();
+    expect(screen.getByText('21d PI')).toBeTruthy();
+    expect(screen.getByText('In PI')).toBeTruthy();
   });
 
   it('renders NULL return cells as em dash', () => {

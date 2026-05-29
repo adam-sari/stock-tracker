@@ -78,6 +78,57 @@ export function listPredictionsWithReturns(db: Database.Database, opts: ListOpts
   `).all(...params) as PredictionRow[];
 }
 
+export type PredictionWithPIRow = {
+  date: string; ticker: string; signal_kind: string; score: number;
+  return_21d: number | null; spy_excess_21d: number | null;
+  lower_21d: number | null; upper_21d: number | null;
+  in_pi_21d: boolean | null;
+};
+
+export function listPredictionsWithPI(
+  db: Database.Database, opts: ListOpts,
+): PredictionWithPIRow[] {
+  const where: string[] = [];
+  const params: Array<string | number> = [];
+  if (opts.signalKind !== undefined) {
+    where.push('bs.signal_kind = ?');
+    params.push(opts.signalKind);
+  }
+  if (opts.minScore !== undefined) {
+    where.push('bs.score >= ?');
+    params.push(opts.minScore);
+  }
+  const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+  const limit = opts.limit !== undefined ? `LIMIT ${Math.max(0, Math.floor(opts.limit))}` : '';
+
+  const rows = db.prepare(`
+    SELECT bs.date AS date, bs.ticker AS ticker, bs.signal_kind AS signal_kind,
+           bs.score AS score,
+           rr.return_pct AS return_21d, rr.spy_excess_pct AS spy_excess_21d,
+           pi.lower AS lower_21d, pi.upper AS upper_21d
+    FROM backtest_scores bs
+    LEFT JOIN realized_returns rr
+      ON rr.date = bs.date AND rr.ticker = bs.ticker
+         AND rr.horizon_days = 21 AND rr.status = 'computed'
+    LEFT JOIN prediction_intervals pi
+      ON pi.date = bs.date AND pi.ticker = bs.ticker
+         AND pi.horizon_days = 21 AND pi.alpha = 0.10
+    ${whereClause}
+    ORDER BY bs.date DESC, bs.score DESC
+    ${limit}
+  `).all(...params) as Array<any>;
+
+  return rows.map(r => ({
+    date: r.date, ticker: r.ticker, signal_kind: r.signal_kind, score: r.score,
+    return_21d: r.return_21d, spy_excess_21d: r.spy_excess_21d,
+    lower_21d: r.lower_21d, upper_21d: r.upper_21d,
+    in_pi_21d:
+      r.lower_21d === null || r.upper_21d === null || r.spy_excess_21d === null
+        ? null
+        : r.spy_excess_21d >= r.lower_21d && r.spy_excess_21d <= r.upper_21d,
+  }));
+}
+
 export function computeHitRate(
   db: Database.Database,
   opts: { horizon: number; minScore: number; signalKind?: string }
