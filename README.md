@@ -1,6 +1,26 @@
 # Stock Tracker
 
-Personal local-only portfolio tracker for US equities with real-time prices, signal ingestion, and a discovery feed.
+[![tests](https://github.com/adam-sari/stock-tracker/actions/workflows/test.yml/badge.svg)](https://github.com/adam-sari/stock-tracker/actions/workflows/test.yml)
+
+**A private market-research desk that runs on your own laptop.** Stock Tracker follows the US stocks you own or are watching and pulls in public signals that investors watch for early hints of what comes next: company insiders buying their own shares, trades disclosed by members of Congress, SEC filings that mention "going concern" or restatements, hedge-fund holdings, analyst ratings, news and more than a dozen other sources. It turns those signals into one score per stock, shows what changed on each of your holdings, and can write a short research note for a ticker with its claims cited back to the data they come from.
+
+It is built for an individual investor who wants this kind of picture without paying for a terminal, and who wants the data to stay on their own machine.
+
+**Notable engineering**
+
+- **20+ data sources, one local database.** 18 scheduled jobs and a Python sidecar ingest SEC EDGAR filings (Form 4 insider trades, 13F fund holdings, full-text alerts), congressional and executive-branch trades, earnings, news and more into a single SQLite file, with automatic fallback between price providers (Alpaca, Yahoo, Stooq) when one fails.
+- **Composite scoring with a backtest.** Signals are combined into a discovery score; a replay and backtest pipeline (event studies, information coefficients, learned weights) checks how those scores would have performed historically.
+- **Prediction intervals, not just point estimates.** LightGBM quantile models give forward-return ranges per horizon, calibrated with conformal prediction and kept honest under market shifts by an online conformal PID controller (Angelopoulos et al., NeurIPS 2023).
+- **Cited AI research notes.** A research tab builds a typed context bundle from the database and asks an LLM for a note; claims are cited back to the database rows (or web sources) they come from, with per-call and monthly cost ceilings.
+- **Tested.** Around 770 Vitest tests and 75 pytest tests run in CI on Ubuntu and Windows.
+
+| Stock detail (daily chart from live Yahoo data) | Dashboard holdings and watchlist |
+|---|---|
+| ![Stock detail page for NVDA with a daily candlestick chart and position summary](docs/img/stock-detail.png) | ![Dashboard holdings table with P&L and a watchlist](docs/img/dashboard-holdings.png) |
+
+<sub>Screenshots from a local run with example holdings; prices are real market data. Not investment advice.</sub>
+
+---
 
 ## Features
 
@@ -68,7 +88,7 @@ Two processes, one SQLite file:
 │  - CUSIP → ticker resolution via OpenFIGI               │
 ├─────────────────────────────────────────────────────────┤
 │  SQLite (WAL mode) — shared state, single source of truth│
-│  Schema version: 11                                      │
+│  Schema version: 15                                      │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -107,9 +127,9 @@ All data lives in `db/stocks.db`. The Next.js app owns the write path for most t
 |---|---|
 | Frontend | Next.js 15, React 19, Tailwind CSS, lightweight-charts |
 | Backend | Next.js API routes (Node.js), node-cron |
-| Sidecar | Python 3.14, FastAPI, edgartools, httpx |
+| Sidecar | Python 3.12+, FastAPI, edgartools, httpx |
 | Database | SQLite (better-sqlite3, WAL mode) |
-| Testing | Vitest (unit), Playwright (e2e) |
+| Testing | Vitest (unit), pytest (sidecar), Playwright (e2e) |
 | Language | TypeScript (strict), Python |
 | Data providers | Alpaca, Finnhub, FMP, Yahoo Finance, ApeWisdom, Wikimedia, USAspending, Greenhouse, Open Cabinet |
 
@@ -118,8 +138,7 @@ All data lives in `db/stocks.db`. The Next.js app owns the write path for most t
 ## Quickstart
 
 ```bash
-# 1. Install dependencies
-nvm use
+# 1. Install dependencies (Node 20+, Python 3.12+, uv)
 npm install
 cd sidecar && uv sync && cd ..
 
@@ -150,12 +169,12 @@ npm run start:all
 |---|---|
 | `npm run dev` | Next.js dev server only |
 | `npm run start:all` | Next.js + Python sidecar together |
-| `npm test` | Vitest unit tests (271 tests) |
+| `npm test` | Vitest unit tests |
 | `npm run test:e2e` | Playwright end-to-end tests |
 | `npm run typecheck` | Strict TypeScript check |
 | `npm run db:init` | Apply schema migrations (idempotent) |
 | `npm run probe` | Live probe of provider endpoints |
-| `cd sidecar && uv run pytest -v` | Python sidecar tests (6 tests) |
+| `cd sidecar && uv run pytest -v` | Python sidecar tests |
 
 ---
 
@@ -203,7 +222,7 @@ The report lands in `out/backtest/<timestamp>/report.html`.
 - **SQLite scalability** — fine for hundreds of tickers and years of data; not designed for multi-user concurrency.
 - **Alpaca IEX free tier** — 15-minute delayed quotes outside market hours; real-time during market hours on the free IEX feed.
 - **FMP free tier** — limited request quota; heavy use may hit rate limits.
-- **Discovery scoring** — the scoring algorithm is heuristic and not backtested. Treat signals as informational, not investment advice.
+- **Discovery scoring** — weights can be backtested on historical data (see Backfilling), but past performance is no guarantee. Treat signals as informational, not investment advice.
 - **Python sidecar EDGAR ingestion** — Form 4 and 13-F coverage depends on filing availability in edgartools; some smaller filers may be missed.
 
 ---
