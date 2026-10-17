@@ -86,13 +86,18 @@ describe('buildTickerContext', () => {
   });
 
   it('flags volume spikes (>2x trailing average) with cite', () => {
+    // Dates are relative to today so the spike always falls inside the 90-day window.
+    const start = new Date(); start.setUTCHours(0, 0, 0, 0); start.setUTCDate(start.getUTCDate() - 40);
+    const isoDay = (offset: number) => {
+      const d = new Date(start); d.setUTCDate(d.getUTCDate() + offset);
+      return d.toISOString().slice(0, 10);
+    };
     for (let i = 0; i < 30; i++) {
-      const d = new Date('2026-04-01T00:00:00Z'); d.setUTCDate(d.getUTCDate() + i);
       getDb().prepare(`INSERT INTO candles_daily (ticker, date, open, high, low, close, volume, source)
-        VALUES ('EPAM', ?, 100, 101, 99, 100, 1000000, 'alpaca')`).run(d.toISOString().slice(0,10));
+        VALUES ('EPAM', ?, 100, 101, 99, 100, 1000000, 'alpaca')`).run(isoDay(i));
     }
     getDb().prepare(`INSERT INTO candles_daily (ticker, date, open, high, low, close, volume, source)
-      VALUES ('EPAM', '2026-05-01', 100, 101, 99, 100, 5000000, 'alpaca')`).run();
+      VALUES ('EPAM', ?, 100, 101, 99, 100, 5000000, 'alpaca')`).run(isoDay(30));
     const ctx = buildTickerContext('EPAM', getDb(), 'standard');
     const spikes = ctx.signals_last_90d.volume_spikes;
     expect(spikes.length).toBeGreaterThanOrEqual(1);
